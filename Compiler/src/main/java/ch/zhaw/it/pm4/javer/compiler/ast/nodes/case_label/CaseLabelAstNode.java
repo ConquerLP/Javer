@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel;
+package ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 

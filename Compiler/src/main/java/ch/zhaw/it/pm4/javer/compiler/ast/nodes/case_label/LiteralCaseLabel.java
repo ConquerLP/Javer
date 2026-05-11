@@ -1,8 +1,7 @@
-package ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel;
-
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
+package ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label;
 
 import ch.zhaw.it.pm4.javer.compiler.annotation.JacocoGenerated;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNodeBase;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitor;
 

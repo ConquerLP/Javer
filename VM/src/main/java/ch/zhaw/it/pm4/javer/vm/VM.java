@@ -277,24 +277,19 @@ public class VM {
 
         for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
             String line = stripComment(lines.get(i)).trim();
-            if (line.isEmpty()) {
-                continue;
-            }
-
-            if (line.equals(".code") || line.equals(".data")) {
-                errors.add("Line " + (i + 1) + ": nested section marker not allowed inside code section");
-                continue;
-            }
-
-            if (isLabel(line)) {
-                String labelName = extractLabelName(line);
-                if (labels.containsKey(labelName)) {
-                    errors.add("Line " + (i + 1) + ": duplicate label '" + labelName + "'");
+            if (!line.isEmpty()) {
+                if (line.equals(".code") || line.equals(".data")) {
+                    errors.add("Line " + (i + 1) + ": nested section marker not allowed inside code section");
+                } else if (isLabel(line)) {
+                    String labelName = extractLabelName(line);
+                    if (labels.containsKey(labelName)) {
+                        errors.add("Line " + (i + 1) + ": duplicate label '" + labelName + "'");
+                    } else {
+                        labels.put(labelName, address);
+                    }
                 } else {
-                    labels.put(labelName, address);
+                    address++;
                 }
-            } else {
-                address++;
             }
         }
 
@@ -303,11 +298,7 @@ public class VM {
         address = 0;
         for (int i = codeLineIndex + 1; i < dataLineIndex; i++) {
             String line = stripComment(lines.get(i)).trim();
-            if (line.isEmpty()) {
-                continue;
-            }
-
-            if (isLabel(line)) {
+            if (line.isEmpty() || isLabel(line)) {
                 continue;
             }
 
@@ -324,24 +315,18 @@ public class VM {
 
         for (int i = dataLineIndex + 1; i < lines.size(); i++) {
             String line = stripComment(lines.get(i)).trim();
-            if (line.isEmpty()) {
-                continue;
-            }
-
-            if (line.equals(".code") || line.equals(".data")) {
-                errors.add("Line " + (i + 1) + ": section marker not allowed inside data section");
-                continue;
-            }
-
-            if (isLabel(line)) {
-                errors.add("Line " + (i + 1) + ": labels are only allowed in code section");
-                continue;
-            }
-
-            try {
-                parseDataLine(line, i + 1);
-            } catch (ParseException e) {
-                errors.addAll(e.getErrors());
+            if (!line.isEmpty()) {
+                if (line.equals(".code") || line.equals(".data")) {
+                    errors.add("Line " + (i + 1) + ": section marker not allowed inside data section");
+                } else if (isLabel(line)) {
+                    errors.add("Line " + (i + 1) + ": labels are only allowed in code section");
+                } else {
+                    try {
+                        parseDataLine(line, i + 1);
+                    } catch (ParseException e) {
+                        errors.addAll(e.getErrors());
+                    }
+                }
             }
         }
 
@@ -374,7 +359,7 @@ public class VM {
     }
 
     private boolean isLabel(String line) {
-        return line.matches("^(_?[a-zA-Z][a-zA-Z0-9_]*):$");
+        return line.matches("^(_?[a-zA-Z]\\w*):$");
     }
 
     private String extractLabelName(String line) {
@@ -1993,7 +1978,7 @@ public class VM {
         @Override
         public void execute(VM vm) {
             int i = vm.popInt();
-            vm.pushDouble((double) i);
+            vm.pushDouble(i);
         }
     }
 

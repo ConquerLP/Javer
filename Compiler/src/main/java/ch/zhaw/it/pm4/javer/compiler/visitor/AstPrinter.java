@@ -1,12 +1,53 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.LiteralCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.EnumCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.LiteralCaseLabel;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumItem;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ArrayInitExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ConditionalExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.DoWhileStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInitExpressionList;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForInitVarDeclaration;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ForStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IfStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.IndexExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.LiteralExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.MemberAccessExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NameExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.PostfixExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ReturnStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchCase;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.SwitchStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.UnaryExpression;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.VarDeclarationStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.WhileStatement;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.ArrayType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.NamedType;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveType;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.BlockScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
@@ -22,18 +63,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.SymbolEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceRange;
-
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
 
 public class AstPrinter extends AstNodeVisitorBase {
 

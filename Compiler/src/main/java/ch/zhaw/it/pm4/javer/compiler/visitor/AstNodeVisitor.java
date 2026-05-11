@@ -3,7 +3,7 @@ package ch.zhaw.it.pm4.javer.compiler.visitor;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.*;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.ArrayInitExpression;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignExpression;

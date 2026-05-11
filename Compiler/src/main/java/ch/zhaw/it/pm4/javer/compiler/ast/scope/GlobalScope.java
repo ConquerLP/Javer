@@ -50,17 +50,15 @@ public final class GlobalScope {
     public EnumValueEntry resolveUniqueEnumValue(String name) {
         EnumValueEntry found = null;
         for (EnumEntry enumEntry : enums.values()) {
-            if (enumEntry.getScope() == null) {
-                continue;
+            if (enumEntry.getScope() != null) {
+                EnumValueEntry candidate = enumEntry.getScope().resolveEnumValue(name);
+                if (candidate != null) {
+                    if (found != null) {
+                        return null;
+                    }
+                    found = candidate;
+                }
             }
-            EnumValueEntry candidate = enumEntry.getScope().resolveEnumValue(name);
-            if (candidate == null) {
-                continue;
-            }
-            if (found != null) {
-                return null;
-            }
-            found = candidate;
         }
         return found;
     }
