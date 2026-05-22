@@ -1,0 +1,9 @@
+# ifndef PRINT_INC
+# define PRINT_INC
+
+fn void println(int value) {
+    call printi(value);
+    call prints("\n");
+}
+
+# endif // PRINT_INC

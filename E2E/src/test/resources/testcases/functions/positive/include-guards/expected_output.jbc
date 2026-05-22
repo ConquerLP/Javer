@@ -1,0 +1,24 @@
+.code
+_println:
+ENTER, 0
+LOCAL, 16
+LOAD4
+PRINTI
+PUSHR, string_0
+PRINTS
+RET, 0
+_printOnce:
+ENTER, 0
+PUSHR, string_1
+PRINTS
+RET, 0
+_main:
+ENTER, 0
+PUSHI, 41
+CALL, _println, 4
+CALL, _printOnce, 0
+RET, 0
+
+.data
+string_0 1 01,00,00,00,0A,00
+string_1 1 05,00,00,00,6F,00,6E,00,63,00,65,00,0A,00

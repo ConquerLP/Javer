@@ -39,6 +39,18 @@ public class SourceCache {
     }
 
     /**
+     * Initializes the cache from already prepared source text.
+     *
+     * @param filePath display path for diagnostics
+     * @param sourceCode source text represented by this cache
+     */
+    public SourceCache(String filePath, String sourceCode) {
+        this.filePath = filePath;
+        this.sourceCode = sourceCode == null ? "" : sourceCode;
+        this.cachedLines = buildCache(this.sourceCode);
+    }
+
+    /**
      * Internal helper to pre-compute the lines of the source code.
      *
      * @param source The raw source string.
@@ -46,14 +58,6 @@ public class SourceCache {
      */
     private List<String> buildCache(String source) {
         return Arrays.asList(source.split("\\R", -1));
-    }
-
-    /**
-     * Retrieves the file path this cache was built from.
-     * Useful for the DiagnosticBag when printing error reports.
-     */
-    public String getFilePath() {
-        return filePath;
     }
 
     /**

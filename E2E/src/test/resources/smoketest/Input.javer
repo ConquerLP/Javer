@@ -1,11 +1,11 @@
 fn void main() {
 
     // %i, %d, %c, %b, %s
-    call printf(" s% %s %%%s %%s\n",
+    call printf("%i %s %c\n",
         "test1",
         "test2",
         "test3"
-        );
+    );
 
 }
 

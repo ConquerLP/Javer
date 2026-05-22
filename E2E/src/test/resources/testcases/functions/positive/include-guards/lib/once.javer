@@ -1,0 +1,5 @@
+# pragma once
+
+fn void printOnce() {
+    call prints("once\n");
+}

@@ -1,5 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -11,6 +12,7 @@ import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.parser.Parser;
+import ch.zhaw.it.pm4.javer.compiler.preprocessor.SourcePreprocessor;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstPrinter;
 import ch.zhaw.it.pm4.javer.compiler.visitor.CodeGenerator;
 import ch.zhaw.it.pm4.javer.compiler.visitor.LayoutVisitor;
@@ -34,7 +36,7 @@ public class Compiler {
     // - stop or continue pipeline based on diagnostics
     //
     // Pipeline:
-    // args -> setup -> lexing -> parsing -> ast-checks -> code-generation -> done
+    // args -> setup -> preprocessing -> lexing -> parsing -> ast-checks -> code-generation -> done
 
     private final CompilerOptions options;
     private final CompilationContext context;
@@ -78,6 +80,11 @@ public class Compiler {
      */
     public void compile() {
         enterPhase(CompilationPhase.ARGUMENT_PARSING);
+
+        preprocessSource();
+        if (stopAfterPhase()) {
+            return;
+        }
 
         List<Token> tokens = lex(context.getSourceCache().getSourceCode());
         if (stopAfterPhase()) {
@@ -160,6 +167,18 @@ public class Compiler {
     private void enterPhase(CompilationPhase nextPhase) {
         phaseAbortRequested = false;
         context.getDiagnosticBag().setPhase(nextPhase);
+    }
+
+    private void preprocessSource() {
+        enterPhase(CompilationPhase.PREPROCESSING);
+        String sourceCode = new SourcePreprocessor(context.getDiagnosticBag())
+                .preprocess(Path.of(options.getInputFilePath()));
+        if (context.getDiagnosticBag().hasErrors()) {
+            return;
+        }
+        SourceCache expandedSourceCache = new SourceCache(options.getInputFilePath(), sourceCode);
+        context.setSourceCache(expandedSourceCache);
+        context.getDiagnosticBag().setSourceCache(expandedSourceCache);
     }
 
     private List<Token> lex(String sourceCode) {

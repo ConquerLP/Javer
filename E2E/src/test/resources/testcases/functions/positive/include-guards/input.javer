@@ -1,0 +1,9 @@
+# include "lib/print.javer"
+# include "lib/print.javer"
+#include "lib/once.javer" // include once helper
+#include "lib/once.javer"
+
+fn void main() {
+    call println(41);
+    call printOnce();
+}

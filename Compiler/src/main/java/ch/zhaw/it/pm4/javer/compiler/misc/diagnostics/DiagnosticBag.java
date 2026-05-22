@@ -19,7 +19,7 @@ public class DiagnosticBag {
 
     private final int errorLimit;
     private final String filePath;
-    private final SourceCache sourceCache;
+    private SourceCache sourceCache;
 
     private CompilationPhase phase;
     private final List<Diagnostic> diagnostics;
@@ -64,6 +64,15 @@ public class DiagnosticBag {
      */
     public void addPhaseAbortListener(PhaseAbortListener listener) {
         phaseAbortListeners.add(listener);
+    }
+
+    /**
+     * Replaces the source cache used for excerpts in later diagnostics.
+     *
+     * @param sourceCache source text cache for diagnostics
+     */
+    public void setSourceCache(SourceCache sourceCache) {
+        this.sourceCache = sourceCache;
     }
 
     /**
@@ -222,7 +231,7 @@ public class DiagnosticBag {
             char c = line.charAt(i);
             if (c == '\t') {
                 int spaces = TAB_WIDTH - ((column - 1) % TAB_WIDTH);
-                expanded.append(" ".repeat(spaces));
+                expanded.repeat(" ", spaces);
                 column += spaces;
             } else {
                 expanded.append(c);
