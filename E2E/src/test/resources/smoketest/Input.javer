@@ -1,12 +1,13 @@
 #include "stdlib.javer"
+#include "util/collection.javer"
 
 fn void main() {
 
-    // %i, %d, %c, %b, %s
-    call printf("%s %s %s\n",
-        "test1",
-        "test2",
-        "test3"
-    );
+    let struct LinkedList list = call LinkedList_new();
+    call LinkedList_add(list, 3);
+    call LinkedList_add(list, "test");
+    call LinkedList_add(list, 'u');
+    call LinkedList_add(list, 3.141877896);
+    call LinkedList_print(list);
 
 }

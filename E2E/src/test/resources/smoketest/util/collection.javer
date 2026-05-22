@@ -1,0 +1,39 @@
+#pragma once
+
+struct LinkedList : struct Object {
+    struct LinkedListNode first;
+    struct LinkedListNode last;
+    int size;
+}
+
+struct LinkedListNode : struct Object {
+    struct LinkedListNode next;
+    struct LinkedListNode prev;
+    struct Object value;
+}
+
+fn struct LinkedList LinkedList_new() {
+    return new struct LinkedList;
+}
+
+fn void LinkedList_add(struct LinkedList list, struct Object e) {
+    if(list.first == null) {
+        list.first = new struct LinkedListNode;
+        list.first.value = e;
+        list.last = list.first;
+    } else {
+        let struct LinkedListNode temp = new struct LinkedListNode;
+        list.last.next = temp;
+        temp.value = e;
+        temp.prev = list.last;
+        list.last = temp;
+    }
+}
+
+fn void LinkedList_print(struct LinkedList list) {
+    let struct LinkedListNode temp = list.first;
+    while(temp != null) {
+        call Object_print(temp.value);
+        temp = temp.next;
+    }
+}

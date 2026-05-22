@@ -23,3 +23,13 @@ fn void printf(string format, struct Object ... o) {
         }
     }
 }
+
+fn void Object_print(struct Object o) {
+    switch(o.type) {
+        case DataType.INT:      call printi((cast (struct Int)o).value);
+        case DataType.DOUBLE:   call printd((cast (struct Double)o).value);
+        case DataType.STRING:   call prints((cast (struct String)o).value);
+        case DataType.CHAR:     call printc((cast (struct Char)o).value);
+        case DataType.BOOLEAN:  call printb((cast (struct Boolean)o).value);
+    }
+}
