@@ -1,30 +1,36 @@
 fn void main() {
 
-    let struct A a = new struct A;
-    a.d = 3;
-    a.d1 = 6;
-
-    call printf(a.d);
-    call printf(a.d1);
-
-    let struct B bb = cast (struct B) a;
-    bb.d = 0.0;
-
-    call printf(a.d);
-    call printf(a.d1);
+    // %i, %d, %c, %b, %s
+    call printf(" s% %s %%%s %%s\n",
+        "test1",
+        "test2",
+        "test3"
+        );
 
 }
 
-struct A {
-    int d;
-    int d1;
-}
-
-struct B {
-    double d;
-}
-
-fn void printf(int d) {
-    call printi(d);
-    call prints("\n");
+fn void printf(string format, struct Object ... o) {
+    let int i;
+    let int j;
+    for(i = 0, j = 0; i < format.length; i++) {
+        let char c = format[i];
+        switch(c) {
+            case '%': {
+                i++;
+                if(i >= format.length) break;
+                c = format[i];
+                switch(c) {
+                    case 'i': call printi((cast (struct Int)o[j++]).value);
+                    case 's': call prints((cast (struct String)o[j++]).value);
+                    case 'c': call printc((cast (struct Char)o[j++]).value);
+                    case 'd': call printd((cast (struct Double)o[j++]).value);
+                    case 'b': call prints((cast (struct Boolean)o[j++]).value ? "true" : "false");
+                    default: call printc(c);
+                }
+            }
+            default: {
+                call printc(c);
+            }
+        }
+    }
 }

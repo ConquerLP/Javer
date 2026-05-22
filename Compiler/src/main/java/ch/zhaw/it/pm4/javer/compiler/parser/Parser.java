@@ -372,10 +372,15 @@ public class Parser {
     private StructDeclaration parseStructDeclaration() {
         Token startToken = expectTokenType(TokenType.TYPE_STRUCT);
         String name = expectTokenType(TokenType.ID_IDENTIFIER).getValue();
+        NamedType baseType = null;
+        if (matchCurrentToken(TokenType.SYMBOL_COLON)) {
+            match(TokenType.SYMBOL_COLON);
+            baseType = parseNamedType();
+        }
         match(TokenType.SYMBOL_LEFT_BRACE);
         List<StructField> fields = parseStructFields();
         match(TokenType.SYMBOL_RIGHT_BRACE);
-        return located(new StructDeclaration(name, fields), startToken);
+        return located(new StructDeclaration(name, baseType, fields), startToken);
     }
 
     private List<StructField> parseStructFields() {

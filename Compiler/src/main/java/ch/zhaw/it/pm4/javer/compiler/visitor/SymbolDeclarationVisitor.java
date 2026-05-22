@@ -1,6 +1,9 @@
 package ch.zhaw.it.pm4.javer.compiler.visitor;
 
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.Set;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
@@ -37,6 +40,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeRules;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
+import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInTypes;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
@@ -53,6 +57,9 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
     private FunctionEntry currentFunction;
     private BlockScope currentBlock;
     private int nextVariableDeclarationOrder;
+    private final Map<StructEntry, StructDeclaration> structDeclarations = new IdentityHashMap<>();
+    private final Set<StructEntry> completedStructLayouts = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final Set<StructEntry> structLayoutsInProgress = Collections.newSetFromMap(new IdentityHashMap<>());
 
     /**
      * Creates a declaration pass.
@@ -67,15 +74,24 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
     @Override
     public void visit(CompilationUnit node) {
         globalScope = node.getGlobalScope();
+        structDeclarations.clear();
+        completedStructLayouts.clear();
+        structLayoutsInProgress.clear();
 
         registerBuiltInFunctions();
+        BuiltInTypes.register(globalScope);
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             registerTopLevelDeclaration(declaration);
         }
         validateMainFunction(node);
         for (DeclarationAstNode declaration : node.getDeclarations()) {
-            if (declaration instanceof EnumDeclaration || declaration instanceof StructDeclaration) {
+            if (declaration instanceof EnumDeclaration) {
                 declaration.accept(this);
+            }
+        }
+        for (DeclarationAstNode declaration : node.getDeclarations()) {
+            if (declaration instanceof StructDeclaration struct) {
+                declareStructLayout(struct);
             }
         }
         for (DeclarationAstNode declaration : node.getDeclarations()) {
@@ -113,8 +129,12 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             entry.setScope(scope);
             struct.setSymbolEntry(entry);
             struct.setStructScope(scope);
+            structDeclarations.put(entry, struct);
             if (!globalScope.defineStruct(entry)) {
-                diagnosticBag.add(struct.getSourceRange().start(), Severity.ERROR, "Duplicate struct: " + struct.getName());
+                String message = BuiltInTypes.isBuiltInStructName(struct.getName())
+                        ? "Built-in struct cannot be overwritten: " + struct.getName()
+                        : "Duplicate struct: " + struct.getName();
+                diagnosticBag.add(struct.getSourceRange().start(), Severity.ERROR, message);
             }
             return;
         }
@@ -126,7 +146,10 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             enumDeclaration.setSymbolEntry(entry);
             enumDeclaration.setEnumScope(scope);
             if (!globalScope.defineEnum(entry)) {
-                diagnosticBag.add(enumDeclaration.getSourceRange().start(), Severity.ERROR, "Duplicate enum: " + enumDeclaration.getName());
+                String message = BuiltInTypes.isBuiltInEnumName(enumDeclaration.getName())
+                        ? "Built-in enum cannot be overwritten: " + enumDeclaration.getName()
+                        : "Duplicate enum: " + enumDeclaration.getName();
+                diagnosticBag.add(enumDeclaration.getSourceRange().start(), Severity.ERROR, message);
             }
         }
     }
@@ -258,9 +281,34 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
 
     @Override
     public void visit(StructDeclaration node) {
+        declareStructLayout(node);
+    }
+
+    private void declareStructLayout(StructDeclaration node) {
+        StructEntry structEntry = node.getSymbolEntry();
+        if (structEntry == null || completedStructLayouts.contains(structEntry)) {
+            return;
+        }
+        if (structLayoutsInProgress.contains(structEntry)) {
+            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
+                    "Cyclic struct inheritance involving: " + node.getName());
+            return;
+        }
+
+        structLayoutsInProgress.add(structEntry);
         StructScope structScope = node.getStructScope();
 
-        int offsetBytes = 0;
+        StructEntry baseStruct = resolveBaseStruct(node);
+        if (baseStruct != null) {
+            StructDeclaration baseDeclaration = structDeclarations.get(baseStruct);
+            if (baseDeclaration != null) {
+                declareStructLayout(baseDeclaration);
+            }
+            structEntry.setBaseStruct(baseStruct);
+            inheritFields(node, baseStruct);
+        }
+
+        int offsetBytes = structScope.getSizeBytes();
         for (StructField field : node.getFields()) {
             TypeInfo type = resolveType(field.getType());
             int sizeBytes = type.sizeBytes();
@@ -269,11 +317,56 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
 
             if (!structScope.defineField(entry)) {
                 diagnosticBag.add(field.getSourceRange().start(), Severity.ERROR, "Duplicate field: " + field.getName());
+            } else {
+                offsetBytes += sizeBytes;
             }
-
-            offsetBytes += sizeBytes;
         }
         structScope.setSizeBytes(offsetBytes);
+        structLayoutsInProgress.remove(structEntry);
+        completedStructLayouts.add(structEntry);
+    }
+
+    private StructEntry resolveBaseStruct(StructDeclaration node) {
+        if (node.getBaseType() == null) {
+            return null;
+        }
+
+        TypeInfo baseType = resolveType(node.getBaseType());
+        if (!(baseType instanceof StructTypeInfo(StructEntry baseStruct)) || baseStruct == null) {
+            diagnosticBag.add(node.getBaseType().getSourceRange().start(), Severity.ERROR,
+                    "Struct inheritance requires a base struct.");
+            return null;
+        }
+
+        StructEntry structEntry = node.getSymbolEntry();
+        if (baseStruct == structEntry) {
+            diagnosticBag.add(node.getBaseType().getSourceRange().start(), Severity.ERROR,
+                    "Struct cannot inherit from itself: " + node.getName());
+            return null;
+        }
+
+        if (structLayoutsInProgress.contains(baseStruct)) {
+            diagnosticBag.add(node.getBaseType().getSourceRange().start(), Severity.ERROR,
+                    "Cyclic struct inheritance involving: " + node.getName());
+            return null;
+        }
+
+        return baseStruct;
+    }
+
+    private void inheritFields(StructDeclaration node, StructEntry baseStruct) {
+        StructScope baseScope = baseStruct.getScope();
+        StructScope structScope = node.getStructScope();
+        if (baseScope == null || structScope == null) {
+            return;
+        }
+
+        for (FieldEntry inheritedField : baseScope.getFields().values()) {
+            if (!structScope.defineField(inheritedField)) {
+                diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
+                        "Inherited duplicate field: " + inheritedField.getName());
+            }
+        }
     }
 
     @Override

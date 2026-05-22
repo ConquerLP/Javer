@@ -3,6 +3,8 @@ package ch.zhaw.it.pm4.javer.compiler.ast.typeinfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.AssignOperator;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpressionKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
+import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInTypes;
 
 /**
  * Central semantic type rules shared by semantic analysis and code generation.
@@ -54,13 +56,22 @@ public final class TypeRules {
         if (isNull(source)) {
             return isReferenceType(target);
         }
+        if (BuiltInTypes.isBoxingConversion(source, target)) {
+            return true;
+        }
         if (target.equals(source)) {
+            return true;
+        }
+        if (isStructUpcast(target, source)) {
             return true;
         }
         return PrimitiveTypeInfo.DOUBLE.equals(target) && PrimitiveTypeInfo.INT.equals(source);
     }
 
     public static boolean needsConversion(TypeInfo from, TypeInfo to) {
+        if (isStructUpcast(to, from)) {
+            return false;
+        }
         return !from.equals(to) && !(isNull(from) && isReferenceType(to));
     }
 
@@ -127,7 +138,7 @@ public final class TypeRules {
             return left.equals(right);
         }
         if (isReferenceType(left) || isReferenceType(right)) {
-            return left.equals(right);
+            return left.equals(right) || areStructsRelated(left, right);
         }
         if (isNumeric(left) && isNumeric(right)) {
             return true;
@@ -151,6 +162,10 @@ public final class TypeRules {
         }
         if (left.equals(right)) {
             return left;
+        }
+        TypeInfo commonStructBase = commonStructBase(left, right);
+        if (commonStructBase != null) {
+            return commonStructBase;
         }
         return PrimitiveTypeInfo.INT;
     }
@@ -177,6 +192,10 @@ public final class TypeRules {
         }
         if (isNull(falseType) && isReferenceType(trueType)) {
             return trueType;
+        }
+        TypeInfo commonStructBase = commonStructBase(trueType, falseType);
+        if (commonStructBase != null) {
+            return commonStructBase;
         }
         if (PrimitiveTypeInfo.DOUBLE.equals(trueType) && PrimitiveTypeInfo.INT.equals(falseType)) {
             return PrimitiveTypeInfo.DOUBLE;
@@ -217,5 +236,37 @@ public final class TypeRules {
             current = elementType;
         }
         return current;
+    }
+
+    private static boolean isStructUpcast(TypeInfo target, TypeInfo source) {
+        if (!(target instanceof StructTypeInfo(StructEntry targetStruct))
+                || !(source instanceof StructTypeInfo(StructEntry sourceStruct))
+                || targetStruct == null
+                || sourceStruct == null) {
+            return false;
+        }
+        return sourceStruct.derivesFrom(targetStruct);
+    }
+
+    private static boolean areStructsRelated(TypeInfo left, TypeInfo right) {
+        return commonStructBase(left, right) != null;
+    }
+
+    private static TypeInfo commonStructBase(TypeInfo left, TypeInfo right) {
+        if (!(left instanceof StructTypeInfo(StructEntry leftStruct))
+                || !(right instanceof StructTypeInfo(StructEntry rightStruct))
+                || leftStruct == null
+                || rightStruct == null) {
+            return null;
+        }
+
+        StructEntry current = leftStruct;
+        while (current != null) {
+            if (rightStruct == current || rightStruct.derivesFrom(current)) {
+                return new StructTypeInfo(current);
+            }
+            current = current.getBaseStruct();
+        }
+        return null;
     }
 }

@@ -1,0 +1,25 @@
+fn void main() {
+    call show(42);
+    call show("ok");
+    call show('Z');
+    call show(2.5);
+    call show(true);
+
+    let struct Object object = 7;
+    call show(object);
+
+    let struct Int wrapped = 9;
+    call printi(wrapped.value);
+    call prints("\n");
+}
+
+fn void show(struct Object object) {
+    switch(object.type) {
+        case DataType.INT: call printi((cast(struct Int) object).value);
+        case DataType.STRING: call prints((cast(struct String) object).value);
+        case DataType.CHAR: call printc((cast(struct Char) object).value);
+        case DataType.DOUBLE: call printd((cast(struct Double) object).value);
+        case DataType.BOOLEAN: call prints((cast(struct Boolean) object).value ? "true" : "false");
+    }
+    call prints("\n");
+}

@@ -1,0 +1,33 @@
+struct Animal {
+    int age;
+    int weight;
+}
+
+struct Dog : struct Animal {
+    int barkVolume;
+}
+
+fn void main() {
+    let struct Dog dog = new struct Dog;
+    dog.age = 7;
+    dog.weight = 21;
+    dog.barkVolume = 3;
+
+    call printAnimal(dog);
+
+    let struct Animal animal = dog;
+    call printi(animal.age);
+    call prints("-");
+    call printi(animal.weight);
+    call prints("\n");
+
+    call printi(dog.barkVolume);
+    call prints("\n");
+}
+
+fn void printAnimal(struct Animal animal) {
+    call printi(animal.age);
+    call prints(":");
+    call printi(animal.weight);
+    call prints("\n");
+}

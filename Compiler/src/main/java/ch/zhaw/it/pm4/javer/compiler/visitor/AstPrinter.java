@@ -134,6 +134,9 @@ public class AstPrinter extends AstNodeVisitorBase {
     public void visit(StructDeclaration node) {
         List<Consumer<Boolean>> children = new ArrayList<>();
         children.add(isLast -> scalarChild("name", quote(node.getName()), node.getSourceRange(), isLast));
+        if (node.getBaseType() != null) {
+            children.add(isLast -> labeledNodeChild("baseType", node.getBaseType(), isLast));
+        }
         children.add(isLast -> nodesChild("fields", node.getFields(), isLast));
         visitMany(children);
     }
@@ -461,6 +464,9 @@ public class AstPrinter extends AstNodeVisitorBase {
                 }
                 case StructEntry struct -> {
                     children.add(childIsLast -> scalarChild("sizeBytes", struct.getSizeBytes(), null, childIsLast));
+                    if (struct.getBaseStruct() != null) {
+                        children.add(childIsLast -> scalarChild("baseStruct", quote(struct.getBaseStruct().getName()), null, childIsLast));
+                    }
                     if (hasStructScopeContent(struct.getScope())) {
                         children.add(childIsLast -> structScopeChild(struct.getScope(), childIsLast));
                     }

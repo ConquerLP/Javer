@@ -4,6 +4,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.caseLabel.EnumCaseLabel;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionParameter;
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.StructField;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BlockStatement;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.CallExpression;
@@ -77,6 +78,16 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
     @Override
     public void visit(FunctionParameter node) {
         node.getType().accept(this);
+    }
+
+    @Override
+    public void visit(StructDeclaration node) {
+        if (node.getBaseType() != null) {
+            node.getBaseType().accept(this);
+        }
+        for (StructField field : node.getFields()) {
+            field.accept(this);
+        }
     }
 
     @Override

@@ -9,6 +9,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.GlobalScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.ArrayTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.EnumTypeInfo;
@@ -18,6 +19,7 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeRules;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
+import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInTypes;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
@@ -48,6 +50,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private int nextLabelId;
     private boolean outputDirectoryReady = true;
     private boolean failed;
+    private GlobalScope globalScope;
 
     /**
      * Creates a code generator that reports invariant failures as diagnostics.
@@ -95,6 +98,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
             return false;
         } finally {
             dataSection = null;
+            globalScope = null;
             currentFunction = null;
         }
     }
@@ -141,6 +145,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     @Override
     public void visit(CompilationUnit node) {
         dataSection = node.getDataSection();
+        globalScope = node.getGlobalScope();
         writeLine(".code");
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             declaration.accept(this);
@@ -149,6 +154,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
         writeLine(".data");
         dataSection.getEntries().values().forEach(entry -> writeLine(entry.toString()));
         dataSection = null;
+        globalScope = null;
     }
 
     @Override
@@ -933,6 +939,7 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     private void emitEnumValue(EnumValueEntry enumValue) {
+        dataSection.addEnumValues(enumValue.getOwnerEnum());
         writeLine("PUSHR, " + enumValue.getDataLabel());
         if (enumValue.getOffsetBytes() != 0) {
             writeLine("PUSHI, " + enumValue.getOffsetBytes());
@@ -960,8 +967,38 @@ public class CodeGenerator extends AstNodeVisitorBase {
     }
 
     private void emitTyped(ExpressionAstNode expression, TypeInfo expectedType) {
+        if (BuiltInTypes.isBoxingConversion(expression.getResultingType(), expectedType)) {
+            emitBoxedExpression(expression);
+            return;
+        }
         expression.accept(this);
         emitConversion(expression.getResultingType(), expectedType);
+    }
+
+    private void emitBoxedExpression(ExpressionAstNode expression) {
+        TypeInfo sourceType = expression.getResultingType();
+        StructEntry wrapper = BuiltInTypes.wrapperStructForPrimitive(globalScope, sourceType);
+        EnumValueEntry dataTypeValue = BuiltInTypes.dataTypeValueForPrimitive(globalScope, sourceType);
+        if (wrapper == null || dataTypeValue == null) {
+            throw new IllegalStateException("Missing built-in wrapper for " + sourceType);
+        }
+
+        writeLine("PUSHI, " + wrapper.getSizeBytes());
+        writeLine("NEW");
+        emitBoxedField(wrapper, BuiltInTypes.TYPE_FIELD_NAME, () -> emitEnumValue(dataTypeValue));
+        emitBoxedField(wrapper, BuiltInTypes.VALUE_FIELD_NAME, () -> expression.accept(this));
+    }
+
+    private void emitBoxedField(StructEntry wrapper, String fieldName, Runnable emitValue) {
+        FieldEntry field = wrapper.getScope().resolveField(fieldName);
+        if (field == null) {
+            throw new IllegalStateException("Missing built-in wrapper field: " + wrapper.getName() + "." + fieldName);
+        }
+
+        emitDup(PrimitiveTypeInfo.INT);
+        emitOffset(field.getOffsetBytes());
+        emitValue.run();
+        emitStore(field.getType());
     }
 
     private void emitConversion(TypeInfo from, TypeInfo to) {
@@ -1177,8 +1214,12 @@ public class CodeGenerator extends AstNodeVisitorBase {
     private void emitMemberAddress(MemberAccessExpression node) {
         FieldEntry field = node.getResolvedField();
         node.getTarget().accept(this);
-        if (field.getOffsetBytes() != 0) {
-            writeLine("PUSHI, " + field.getOffsetBytes());
+        emitOffset(field.getOffsetBytes());
+    }
+
+    private void emitOffset(int offsetBytes) {
+        if (offsetBytes != 0) {
+            writeLine("PUSHI, " + offsetBytes);
             writeLine("IADD");
         }
     }

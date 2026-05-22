@@ -1,16 +1,35 @@
-===============================================
-| table: global | scope offset: 0             |
-===============================================
-| kind | name   | type | label    | sizeBytes |
------------------------------------------------
-| func | abs    | int  | '_abs'   | 0         |
-| func | main   | void | '_main'  | 4         |
-| func | printb | void | 'printb' | 0         |
-| func | printc | void | 'printc' | 0         |
-| func | printd | void | 'printd' | 0         |
-| func | printi | void | 'printi' | 0         |
-| func | prints | void | 'prints' | 0         |
-===============================================
+===================================================================
+| table: global | scope offset: 0                                 |
+===================================================================
+| kind   | name     | type   | label                  | sizeBytes |
+-------------------------------------------------------------------
+| enum   | DataType | enum   | 'enum_DataType_values' | 20        |
+| func   | abs      | int    | '_abs'                 | 0         |
+| func   | main     | void   | '_main'                | 4         |
+| func   | printb   | void   | 'printb'               | 0         |
+| func   | printc   | void   | 'printc'               | 0         |
+| func   | printd   | void   | 'printd'               | 0         |
+| func   | printi   | void   | 'printi'               | 0         |
+| func   | prints   | void   | 'prints'               | 0         |
+| struct | Boolean  | struct |                        | 5         |
+| struct | Char     | struct |                        | 6         |
+| struct | Double   | struct |                        | 12        |
+| struct | Int      | struct |                        | 8         |
+| struct | Object   | struct |                        | 4         |
+| struct | String   | struct |                        | 8         |
+===================================================================
+
+================================================================================
+| table: enum DataType | data label: 'enum_DataType_values' | element bytes: 4 |
+================================================================================
+| kind  | name    | value | sizeBytes | offsetBytes | dataLabel                |
+--------------------------------------------------------------------------------
+| value | INT     | 0     | 4         | 0           | 'enum_DataType_values'   |
+| value | STRING  | 1     | 4         | 4           | 'enum_DataType_values'   |
+| value | CHAR    | 2     | 4         | 8           | 'enum_DataType_values'   |
+| value | DOUBLE  | 3     | 4         | 12          | 'enum_DataType_values'   |
+| value | BOOLEAN | 4     | 4         | 16          | 'enum_DataType_values'   |
+================================================================================
 
 ============================================================================================================
 | table: function abs | return: int | label: '_abs' | parameter bytes: 4 | local bytes: 0 | frame bytes: 0 |
@@ -76,3 +95,56 @@
 | param   | function | value | string | 4         | 16          |                                                |
 | blocks  | <none>   |       |        |           |             |                                                |
 ==================================================================================================================
+
+===========================================================
+| table: struct Boolean | size bytes: 5                   |
+===========================================================
+| kind  | name  | type          | sizeBytes | offsetBytes |
+-----------------------------------------------------------
+| field | type  | enum DataType | 4         | 0           |
+| field | value | boolean       | 1         | 4           |
+===========================================================
+
+===========================================================
+| table: struct Char | size bytes: 6                      |
+===========================================================
+| kind  | name  | type          | sizeBytes | offsetBytes |
+-----------------------------------------------------------
+| field | type  | enum DataType | 4         | 0           |
+| field | value | char          | 2         | 4           |
+===========================================================
+
+===========================================================
+| table: struct Double | size bytes: 12                   |
+===========================================================
+| kind  | name  | type          | sizeBytes | offsetBytes |
+-----------------------------------------------------------
+| field | type  | enum DataType | 4         | 0           |
+| field | value | double        | 8         | 4           |
+===========================================================
+
+===========================================================
+| table: struct Int | size bytes: 8                       |
+===========================================================
+| kind  | name  | type          | sizeBytes | offsetBytes |
+-----------------------------------------------------------
+| field | type  | enum DataType | 4         | 0           |
+| field | value | int           | 4         | 4           |
+===========================================================
+
+==========================================================
+| table: struct Object | size bytes: 4                   |
+==========================================================
+| kind  | name | type          | sizeBytes | offsetBytes |
+----------------------------------------------------------
+| field | type | enum DataType | 4         | 0           |
+==========================================================
+
+===========================================================
+| table: struct String | size bytes: 8                    |
+===========================================================
+| kind  | name  | type          | sizeBytes | offsetBytes |
+-----------------------------------------------------------
+| field | type  | enum DataType | 4         | 0           |
+| field | value | string        | 4         | 4           |
+===========================================================

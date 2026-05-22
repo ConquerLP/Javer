@@ -1,0 +1,201 @@
+.code
+_main:
+ENTER, 8
+PUSHI, 8
+NEW
+DUP, 4
+PUSHR, enum_DataType_values
+STORE4
+DUP, 4
+PUSHI, 4
+IADD
+PUSHI, 42
+STORE4
+CALL, _show, 4
+PUSHI, 8
+NEW
+DUP, 4
+PUSHR, enum_DataType_values
+PUSHI, 4
+IADD
+STORE4
+DUP, 4
+PUSHI, 4
+IADD
+PUSHR, string_0
+STORE4
+CALL, _show, 4
+PUSHI, 6
+NEW
+DUP, 4
+PUSHR, enum_DataType_values
+PUSHI, 8
+IADD
+STORE4
+DUP, 4
+PUSHI, 4
+IADD
+PUSHI, 90
+STORE2
+CALL, _show, 4
+PUSHI, 12
+NEW
+DUP, 4
+PUSHR, enum_DataType_values
+PUSHI, 12
+IADD
+STORE4
+DUP, 4
+PUSHI, 4
+IADD
+PUSHD, 2.5
+STORE8
+CALL, _show, 4
+PUSHI, 5
+NEW
+DUP, 4
+PUSHR, enum_DataType_values
+PUSHI, 16
+IADD
+STORE4
+DUP, 4
+PUSHI, 4
+IADD
+PUSHI, 1
+STORE1
+CALL, _show, 4
+LOCAL, 0
+PUSHI, 8
+NEW
+DUP, 4
+PUSHR, enum_DataType_values
+STORE4
+DUP, 4
+PUSHI, 4
+IADD
+PUSHI, 7
+STORE4
+STORE4
+LOCAL, 0
+LOAD4
+CALL, _show, 4
+LOCAL, 4
+PUSHI, 8
+NEW
+DUP, 4
+PUSHR, enum_DataType_values
+STORE4
+DUP, 4
+PUSHI, 4
+IADD
+PUSHI, 9
+STORE4
+STORE4
+LOCAL, 4
+LOAD4
+PUSHI, 4
+IADD
+LOAD4
+PRINTI
+PUSHR, string_1
+PRINTS
+RET, 0
+_show:
+ENTER, 0
+LOCAL, 16
+LOAD4
+LOAD4
+DUP, 4
+PUSHR, enum_DataType_values
+IEQ
+JUMPT, switch_case_2
+DUP, 4
+PUSHR, enum_DataType_values
+PUSHI, 4
+IADD
+IEQ
+JUMPT, switch_case_3
+DUP, 4
+PUSHR, enum_DataType_values
+PUSHI, 8
+IADD
+IEQ
+JUMPT, switch_case_4
+DUP, 4
+PUSHR, enum_DataType_values
+PUSHI, 12
+IADD
+IEQ
+JUMPT, switch_case_5
+DUP, 4
+PUSHR, enum_DataType_values
+PUSHI, 16
+IADD
+IEQ
+JUMPT, switch_case_6
+JUMP, switch_no_match_1
+switch_case_2:
+POP, 4
+LOCAL, 16
+LOAD4
+PUSHI, 4
+IADD
+LOAD4
+PRINTI
+JUMP, switch_end_0
+switch_case_3:
+POP, 4
+LOCAL, 16
+LOAD4
+PUSHI, 4
+IADD
+LOAD4
+PRINTS
+JUMP, switch_end_0
+switch_case_4:
+POP, 4
+LOCAL, 16
+LOAD4
+PUSHI, 4
+IADD
+LOAD2
+PRINTC
+JUMP, switch_end_0
+switch_case_5:
+POP, 4
+LOCAL, 16
+LOAD4
+PUSHI, 4
+IADD
+LOAD8
+PRINTD
+JUMP, switch_end_0
+switch_case_6:
+POP, 4
+LOCAL, 16
+LOAD4
+PUSHI, 4
+IADD
+LOAD1
+JUMPF, cond_false_7
+PUSHR, string_2
+JUMP, cond_end_8
+cond_false_7:
+PUSHR, string_3
+cond_end_8:
+PRINTS
+JUMP, switch_end_0
+switch_no_match_1:
+POP, 4
+JUMP, switch_end_0
+switch_end_0:
+PUSHR, string_1
+PRINTS
+RET, 0
+
+.data
+enum_DataType_values 4 00000000,00000001,00000002,00000003,00000004
+string_0 1 02,00,00,00,6F,00,6B,00
+string_1 1 01,00,00,00,0A,00
+string_2 1 04,00,00,00,74,00,72,00,75,00,65,00
+string_3 1 05,00,00,00,66,00,61,00,6C,00,73,00,65,00
