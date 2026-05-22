@@ -1,0 +1,25 @@
+fn void printf(string format, struct Object ... o) {
+    let int i;
+    let int j;
+    for(i = 0, j = 0; i < format.length; i++) {
+        let char c = format[i];
+        switch(c) {
+            case '%': {
+                i++;
+                if(i >= format.length) break;
+                c = format[i];
+                switch(c) {
+                    case 'i': call printi((cast (struct Int)o[j++]).value);
+                    case 's': call prints((cast (struct String)o[j++]).value);
+                    case 'c': call printc((cast (struct Char)o[j++]).value);
+                    case 'd': call printd((cast (struct Double)o[j++]).value);
+                    case 'b': call prints((cast (struct Boolean)o[j++]).value ? "true" : "false");
+                    default: call printc(c);
+                }
+            }
+            default: {
+                call printc(c);
+            }
+        }
+    }
+}
