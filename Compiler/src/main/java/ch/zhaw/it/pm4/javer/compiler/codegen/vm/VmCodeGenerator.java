@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer.compiler.visitor;
+package ch.zhaw.it.pm4.javer.compiler.codegen.vm;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.case_label.CaseLabelAstNode;
@@ -14,14 +14,9 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
+import ch.zhaw.it.pm4.javer.compiler.codegen.TextCodeGenerator;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.*;
 
 import static ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpressionKind.*;
@@ -29,7 +24,7 @@ import static ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.BinaryExpression
 /**
  * Emits VM bytecode from a semantically checked AST.
  */
-public class CodeGenerator extends AstNodeVisitorBase {
+public class VmCodeGenerator extends TextCodeGenerator {
 
     public static final String JUMPF = "JUMPF, ";
     public static final String JUMP = "JUMP, ";
@@ -46,66 +41,33 @@ public class CodeGenerator extends AstNodeVisitorBase {
     public static final String UNEXPECTED_BINARY_OPERATOR = "Unexpected binary operator: ";
     public static final String UNEXPECTED_CONVERSION_FROM = "Unexpected conversion from ";
 
-    private final DiagnosticBag diagnostics;
-    private final Path outputFile;
-    private final StringBuilder output = new StringBuilder();
     private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
     private DataSection dataSection;
     private FunctionEntry currentFunction;
     private int nextLabelId;
-    private boolean outputDirectoryReady = true;
-    private boolean failed;
 
     /**
      * Creates a code generator that reports invariant failures as diagnostics.
      */
-    public CodeGenerator(DiagnosticBag diagnostics, String outputFilePath) {
-        this.diagnostics = diagnostics;
-        this.outputFile = Path.of(outputFilePath);
-        prepareOutputDirectory();
+    public VmCodeGenerator(DiagnosticBag diagnostics, String outputFilePath) {
+        super(diagnostics, outputFilePath);
     }
 
-    /**
-     * Generates bytecode for a complete compilation unit and writes it to disk.
-     *
-     * @param node root compilation unit
-     */
-    public void generate(CompilationUnit node) {
-        output.setLength(0);
+    @Override
+    protected void reset() {
         loopContexts.clear();
         nextLabelId = 0;
-
-        if (!outputDirectoryReady) {
-            deleteOutputFile();
-            return;
-        }
-
-        try {
-            node.accept(this);
-
-            if (failed || diagnostics.hasErrors()) {
-                deleteOutputFile();
-                return;
-            }
-
-            Files.writeString(
-                    outputFile,
-                    output.toString(),
-                    StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING,
-                    StandardOpenOption.WRITE);
-        } catch (IOException exception) {
-            report("Could not write bytecode output file: " + outputFile + ".");
-            deleteOutputFile();
-        } finally {
-            dataSection = null;
-            currentFunction = null;
-        }
     }
 
-    protected void writeLine(String line) {
-        output.append(line).append(System.lineSeparator());
+    @Override
+    protected void emit(CompilationUnit node) {
+        node.accept(this);
+    }
+
+    @Override
+    protected void cleanup() {
+        dataSection = null;
+        currentFunction = null;
     }
 
     private void writeLabel(String label) {
@@ -114,33 +76,6 @@ public class CodeGenerator extends AstNodeVisitorBase {
 
     private String nextLabel(String prefix) {
         return prefix + "_" + nextLabelId++;
-    }
-
-    private void prepareOutputDirectory() {
-        Path parent = outputFile.toAbsolutePath().getParent();
-        if (parent == null) {
-            return;
-        }
-
-        try {
-            Files.createDirectories(parent);
-        } catch (IOException exception) {
-            outputDirectoryReady = false;
-            report("Could not create bytecode output directory: " + parent + ".");
-        }
-    }
-
-    private void deleteOutputFile() {
-        try {
-            Files.deleteIfExists(outputFile);
-        } catch (IOException exception) {
-            report("Could not delete incomplete bytecode output file: " + outputFile + ".");
-        }
-    }
-
-    private void report(String message) {
-        failed = true;
-        diagnostics.add(null, Severity.ERROR, message);
     }
 
     @Override

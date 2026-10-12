@@ -8,7 +8,6 @@ import java.nio.file.Path;
 public class CompilerOptions {
 
     private static final String SOURCE_FILE_EXTENSION = ".javer";
-    private static final String BYTECODE_FILE_EXTENSION = ".jbc";
 
     // Configuration for a single compilation run.
     //
@@ -20,6 +19,7 @@ public class CompilerOptions {
 
     private final String inputFilePath;
     private final String outputFilePath;
+    private final CompilationTarget target;
     private final boolean dumpLexer;
     private final boolean dumpAst;
     private final boolean dumpSymbolTable;
@@ -27,12 +27,14 @@ public class CompilerOptions {
     private CompilerOptions(
             String inputFilePath,
             String outputFilePath,
+            CompilationTarget target,
             boolean dumpLexer,
             boolean dumpAst,
             boolean dumpSymbolTable) {
 
         this.inputFilePath = inputFilePath;
         this.outputFilePath = outputFilePath;
+        this.target = target;
         this.dumpLexer = dumpLexer;
         this.dumpAst = dumpAst;
         this.dumpSymbolTable = dumpSymbolTable;
@@ -49,6 +51,7 @@ public class CompilerOptions {
     public static CompilerOptions create(String... args) {
         String inputFilePath = null;
         String outputFilePath = null;
+        CompilationTarget target = CompilationTarget.VM;
         boolean dumpLexer = false;
         boolean dumpAst = false;
         boolean dumpSymbolTable = false;
@@ -69,6 +72,10 @@ public class CompilerOptions {
                         i++;
                         outputFilePath = readRequiredValue(args, i, arg);
                     }
+                    case "--target" -> {
+                        i++;
+                        target = CompilationTarget.parse(readRequiredValue(args, i, arg));
+                    }
                     case "--dump-lexer" -> dumpLexer = true;
                     case "--dump-ast" -> dumpAst = true;
                     case "--dump-symboltable" -> dumpSymbolTable = true;
@@ -85,11 +92,12 @@ public class CompilerOptions {
         }
 
         inputFilePath = validateInputFilePath(inputFilePath);
-        outputFilePath = normalizeOutputFilePath(outputFilePath);
+        outputFilePath = normalizeOutputFilePath(outputFilePath, target);
 
         return new CompilerOptions(
                 inputFilePath,
                 outputFilePath,
+                target,
                 dumpLexer,
                 dumpAst,
                 dumpSymbolTable
@@ -112,18 +120,19 @@ public class CompilerOptions {
         return inputFilePath;
     }
 
-    private static String normalizeOutputFilePath(String outputFilePath) {
+    private static String normalizeOutputFilePath(String outputFilePath, CompilationTarget target) {
         String fileName = fileName(outputFilePath);
-        if (fileName.endsWith(BYTECODE_FILE_EXTENSION)) {
+        String outputExtension = target.getOutputExtension();
+        if (fileName.endsWith(outputExtension)) {
             throw new CompilerOptionException(
-                    "Output path must be provided without " + BYTECODE_FILE_EXTENSION
+                    "Output path must be provided without " + outputExtension
                             + " extension: " + outputFilePath);
         }
         if (fileName.contains(".")) {
             throw new CompilerOptionException(
                     "Output path must be provided without file extension: " + outputFilePath);
         }
-        return outputFilePath + BYTECODE_FILE_EXTENSION;
+        return outputFilePath + outputExtension;
     }
 
     private static String fileName(String path) {
@@ -144,6 +153,13 @@ public class CompilerOptions {
      */
     public String getOutputFilePath() {
         return outputFilePath;
+    }
+
+    /**
+     * @return selected compiler output target
+     */
+    public CompilationTarget getTarget() {
+        return target;
     }
 
     /**
@@ -169,7 +185,7 @@ public class CompilerOptions {
 
     public static String usage() {
         return "Usage: compiler --in-file <source.javer> --out-file <output-path-without-extension> "
-                + "[--dump-lexer] [--dump-ast] [--dump-symboltable]";
+                + "[--target vm|fanuc-macro-b] [--dump-lexer] [--dump-ast] [--dump-symboltable]";
     }
 
     public static class CompilerOptionException extends IllegalArgumentException {

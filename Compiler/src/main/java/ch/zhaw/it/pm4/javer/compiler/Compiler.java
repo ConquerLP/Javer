@@ -1,6 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
+import ch.zhaw.it.pm4.javer.compiler.codegen.CodeGeneratorFactory;
 import ch.zhaw.it.pm4.javer.compiler.io.SourceFileReadException;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Lexer;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
@@ -222,6 +223,9 @@ public class Compiler {
 
     private void generateCode(CompilationUnit node) {
         enterPhase(CompilationPhase.CODE_GENERATION);
-        new CodeGenerator(context.getDiagnosticBag(), options.getOutputFilePath()).generate(node);
+        CodeGeneratorFactory.create(
+                options.getTarget(),
+                context.getDiagnosticBag(),
+                options.getOutputFilePath()).generate(node);
     }
 }

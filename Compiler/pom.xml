@@ -16,7 +16,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <main.class>ch.zhaw.it.pm4.javer.compiler.Compiler</main.class>
-        <dist.dir>${maven.multiModuleProjectDirectory}/dist/javer-${maven.build.timestamp}</dist.dir>
+        <jpackage.destination>${dist.dir}/compiler</jpackage.destination>
     </properties>
 
     <build>
@@ -73,7 +73,7 @@
                                     <vendor>Javer</vendor>
                                     <description>Javer Compiler</description>
                                     <input>${project.build.directory}</input>
-                                    <destination>${dist.dir}</destination>
+                                    <destination>${jpackage.destination}</destination>
                                     <mainJar>${project.build.finalName}-all.jar</mainJar>
                                     <mainClass>${main.class}</mainClass>
                                     <type>APP_IMAGE</type>
