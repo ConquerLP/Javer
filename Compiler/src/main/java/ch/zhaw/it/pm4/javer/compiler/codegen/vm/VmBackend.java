@@ -18,6 +18,11 @@ public final class VmBackend implements TargetBackend {
     }
 
     @Override
+    public String dumpSymbolTable(CompilationUnit node) {
+        return new VmSymbolTableAstPrinter(metadata).printToString(node);
+    }
+
+    @Override
     public TargetCodeGenerator createCodeGenerator(DiagnosticBag diagnostics, String outputFilePath) {
         return new VmCodeGenerator(diagnostics, outputFilePath, metadata);
     }

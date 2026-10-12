@@ -97,10 +97,6 @@ public class Compiler {
         return new AstPrinter().printToString(rootNode);
     }
 
-    private static String dumpSymbolTable(CompilationUnit rootNode) {
-        return new SymbolTableAstPrinter().printToString(rootNode);
-    }
-
     /**
      * Runs the compiler pipeline: lexing, parsing, symbol declaration, name
      * resolution, type checking, layout, semantic analysis, and code generation.
@@ -133,9 +129,6 @@ public class Compiler {
         if (stopAfterPhase()) {
             return;
         }
-        if (options.isDumpSymbolTable()) {
-            printSection("SYMBOL TABLE", dumpSymbolTable(rootNode));
-        }
         typeCheck(rootNode);
         if (stopAfterPhase()) {
             return;
@@ -143,6 +136,9 @@ public class Compiler {
         prepareTarget(rootNode);
         if (stopAfterPhase()) {
             return;
+        }
+        if (options.isDumpSymbolTable()) {
+            printSection("SYMBOL TABLE", targetBackend.dumpSymbolTable(rootNode));
         }
         semanticAnalysis(rootNode);
         if (stopAfterPhase()) {

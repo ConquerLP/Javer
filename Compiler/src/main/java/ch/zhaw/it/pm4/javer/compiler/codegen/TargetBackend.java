@@ -10,5 +10,9 @@ public interface TargetBackend {
 
     void prepare(CompilationUnit node, DiagnosticBag diagnostics);
 
+    default String dumpSymbolTable(CompilationUnit node) {
+        return "";
+    }
+
     TargetCodeGenerator createCodeGenerator(DiagnosticBag diagnostics, String outputFilePath);
 }
