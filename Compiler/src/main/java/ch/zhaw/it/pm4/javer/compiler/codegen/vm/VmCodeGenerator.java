@@ -11,7 +11,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
-import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
 import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.codegen.TextCodeGenerator;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
@@ -41,6 +40,7 @@ public class VmCodeGenerator extends TextCodeGenerator {
     public static final String UNEXPECTED_CONVERSION_FROM = "Unexpected conversion from ";
 
     private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
+    private final VmMetadata metadata;
     private VmDataSection dataSection;
     private FunctionEntry currentFunction;
     private int nextLabelId;
@@ -48,8 +48,9 @@ public class VmCodeGenerator extends TextCodeGenerator {
     /**
      * Creates a code generator that reports invariant failures as diagnostics.
      */
-    public VmCodeGenerator(DiagnosticBag diagnostics, String outputFilePath) {
+    VmCodeGenerator(DiagnosticBag diagnostics, String outputFilePath, VmMetadata metadata) {
         super(diagnostics, outputFilePath);
+        this.metadata = metadata;
     }
 
     @Override
@@ -92,15 +93,16 @@ public class VmCodeGenerator extends TextCodeGenerator {
 
     @Override
     public void visit(EnumDeclaration node) {
-        dataSection.addEnumValues(node.getSymbolEntry());
+        dataSection.addEnumValues(node.getSymbolEntry(), metadata.enumLayout(node.getSymbolEntry()));
     }
 
     @Override
     public void visit(FunctionDeclaration node) {
         FunctionEntry function = node.getSymbolEntry();
         currentFunction = function;
-        writeLine("_" + node.getName() + ":");
-        writeLine("ENTER, " + function.getFrameSizeBytes());
+        VmMetadata.VmFunctionLayout layout = metadata.function(function);
+        writeLine(layout.label() + ":");
+        writeLine("ENTER, " + layout.frameSizeBytes());
         node.getBody().accept(this);
         if (!endsWithReturn(node.getBody())) {
             emitFallthroughReturn(function);
@@ -598,7 +600,8 @@ public class VmCodeGenerator extends TextCodeGenerator {
         } else {
             emitFixedArguments(node, parameters);
         }
-        writeLine("CALL, " + function.getLabel() + ", " + function.getParameterBytes());
+        VmMetadata.VmFunctionLayout layout = metadata.function(function);
+        writeLine("CALL, " + layout.label() + ", " + layout.parameterBytes());
     }
 
     private void emitFixedArguments(CallExpression node, List<ParameterEntry> parameters) {
@@ -675,7 +678,7 @@ public class VmCodeGenerator extends TextCodeGenerator {
         if (node.getResultingType() instanceof StructTypeInfo(
                 StructEntry entry
         )) {
-            int sizeBytes = entry.getSizeBytes();
+            int sizeBytes = metadata.struct(entry).sizeBytes();
             writeLine(PUSHI + sizeBytes);
             writeLine("NEW");
             return;
@@ -855,9 +858,10 @@ public class VmCodeGenerator extends TextCodeGenerator {
     }
 
     private void emitEnumValue(EnumValueEntry enumValue) {
-        writeLine(PUSHR + enumValue.getDataLabel());
-        if (enumValue.getOffsetBytes() != 0) {
-            writeLine(PUSHI + enumValue.getOffsetBytes());
+        VmMetadata.VmEnumValueLayout layout = metadata.enumValue(enumValue);
+        writeLine(PUSHR + layout.dataLabel());
+        if (layout.offsetBytes() != 0) {
+            writeLine(PUSHI + layout.offsetBytes());
             writeLine("IADD");
         }
     }
@@ -876,10 +880,10 @@ public class VmCodeGenerator extends TextCodeGenerator {
 
     private void emitPrintBuiltin(CallExpression node) {
         FunctionEntry function = node.getResolvedFunction();
-        BuiltInFunction builtIn = BuiltInFunction.find(function.getName());
+        VmBuiltInFunction builtIn = VmBuiltInFunction.find(function.getName());
         assert builtIn != null;
-        emitTyped(node.getArguments().getFirst(), builtIn.getParameterType());
-        writeLine(builtIn.getVmInstruction());
+        emitTyped(node.getArguments().getFirst(), builtIn.parameterType());
+        writeLine(builtIn.instruction());
     }
 
     private void emitTyped(ExpressionAstNode expression, TypeInfo expectedType) {
@@ -1082,9 +1086,9 @@ public class VmCodeGenerator extends TextCodeGenerator {
     }
 
     private void emitStorageAddress(StorageEntry storage) {
-        int offset = storage.getOffsetBytes();
+        int offset = metadata.storage(storage).offsetBytes();
         if (storage instanceof ParameterEntry) {
-            offset += currentFunction.getLocalBytes();
+            offset += metadata.function(currentFunction).localBytes();
         }
         writeLine(LOCAL + offset);
     }
@@ -1109,8 +1113,9 @@ public class VmCodeGenerator extends TextCodeGenerator {
     private void emitMemberAddress(MemberAccessExpression node) {
         FieldEntry field = node.getResolvedField();
         node.getTarget().accept(this);
-        if (field.getOffsetBytes() != 0) {
-            writeLine(PUSHI + field.getOffsetBytes());
+        int offsetBytes = metadata.storage(field).offsetBytes();
+        if (offsetBytes != 0) {
+            writeLine(PUSHI + offsetBytes);
             writeLine("IADD");
         }
     }

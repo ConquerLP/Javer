@@ -78,8 +78,8 @@ final class VmDataSection {
         return entry;
     }
 
-    public void addEnumValues(EnumEntry enumEntry) {
-        if (entries.containsKey(enumEntry.getDataLabel())) {
+    public void addEnumValues(EnumEntry enumEntry, VmMetadata.VmEnumLayout layout) {
+        if (entries.containsKey(layout.dataLabel())) {
             return;
         }
         if (enumEntry.getScope() == null || enumEntry.getScope().getValues().isEmpty()) {
@@ -90,7 +90,7 @@ final class VmDataSection {
                 .map(EnumValueEntry::getValue)
                 .map(value -> unsignedHex(value, VmLayout.WORD_BYTES))
                 .toList();
-        addConstant(enumEntry.getDataLabel(), PrimitiveTypeInfo.INT, values, VmLayout.WORD_BYTES);
+        addConstant(layout.dataLabel(), PrimitiveTypeInfo.INT, values, layout.elementSizeBytes());
     }
 
     public DataEntry addArrayTemplate(TypeInfo elementType, List<Object> values) {

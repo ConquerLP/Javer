@@ -22,11 +22,19 @@ import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitorBase;
  */
 final class VmPreparationVisitor extends AstNodeVisitorBase {
 
+    private final VmMetadata metadata;
     private FunctionEntry currentFunction;
+
+    VmPreparationVisitor(VmMetadata metadata) {
+        this.metadata = metadata;
+    }
 
     @Override
     public void visit(CompilationUnit node) {
-        node.getGlobalScope().getFunctions().values().forEach(this::layoutFunctionHeader);
+        node.getGlobalScope().getFunctions().values().forEach(function -> {
+            layoutFunctionHeader(function);
+            putFunctionLayout(function);
+        });
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             if (declaration instanceof EnumDeclaration) {
                 declaration.accept(this);
@@ -55,9 +63,14 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
         for (EnumValueEntry value : entry.getScope().getValues().values()) {
             value.setSizeBytes(VmLayout.WORD_BYTES);
             value.setOffsetBytes(offsetBytes);
+            metadata.putEnumValue(value, new VmMetadata.VmEnumValueLayout(
+                    VmLayout.WORD_BYTES,
+                    offsetBytes,
+                    enumDataLabel(entry)));
             offsetBytes += VmLayout.WORD_BYTES;
         }
         entry.setSizeBytes(offsetBytes);
+        metadata.putEnum(entry, new VmMetadata.VmEnumLayout(enumDataLabel(entry), VmLayout.WORD_BYTES, offsetBytes));
     }
 
     @Override
@@ -71,9 +84,13 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
             int sizeBytes = VmLayout.memoryWidth(field.getType()).bytes();
             field.setSizeBytes(sizeBytes);
             field.setOffsetBytes(offsetBytes);
+            metadata.putStorage(field, new VmMetadata.VmStorageLayout(sizeBytes, offsetBytes));
             offsetBytes += sizeBytes;
         }
         node.getStructScope().setSizeBytes(offsetBytes);
+        if (node.getSymbolEntry() != null) {
+            metadata.putStruct(node.getSymbolEntry(), new VmMetadata.VmStructLayout(offsetBytes));
+        }
     }
 
     @Override
@@ -84,6 +101,9 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
             layoutFunctionHeader(currentFunction);
         }
         super.visit(node);
+        if (currentFunction != null) {
+            putFunctionLayout(currentFunction);
+        }
         currentFunction = previousFunction;
     }
 
@@ -93,7 +113,9 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
         if (entry != null && currentFunction != null) {
             int sizeBytes = VmLayout.memoryWidth(entry.getType()).bytes();
             entry.setSizeBytes(sizeBytes);
-            entry.setOffsetBytes(currentFunction.allocateLocalBytes(sizeBytes));
+            int offsetBytes = currentFunction.allocateLocalBytes(sizeBytes);
+            entry.setOffsetBytes(offsetBytes);
+            metadata.putStorage(entry, new VmMetadata.VmStorageLayout(sizeBytes, offsetBytes));
         }
         super.visit(node);
     }
@@ -114,6 +136,22 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
         layoutParameters(function.getScope(), function);
     }
 
+    private void putFunctionLayout(FunctionEntry function) {
+        metadata.putFunction(function, new VmMetadata.VmFunctionLayout(
+                functionLabel(function),
+                function.getParameterBytes(),
+                function.getLocalBytes(),
+                function.getFrameSizeBytes()));
+    }
+
+    private String functionLabel(FunctionEntry function) {
+        return function.isBuiltIn() ? function.getName() : "_" + function.getName();
+    }
+
+    private String enumDataLabel(EnumEntry entry) {
+        return "enum_" + entry.getName() + "_values";
+    }
+
     private void layoutParameters(FunctionScope functionScope, FunctionEntry function) {
         if (functionScope == null) {
             return;
@@ -131,6 +169,7 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
             offsetBytes -= sizeBytes;
             parameter.setSizeBytes(sizeBytes);
             parameter.setOffsetBytes(offsetBytes);
+            metadata.putStorage(parameter, new VmMetadata.VmStorageLayout(sizeBytes, offsetBytes));
         }
     }
 

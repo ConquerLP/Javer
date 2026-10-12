@@ -11,25 +11,23 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Registry of VM-backed functions provided by the language runtime.
+ * Registry of built-in functions provided by the language runtime.
  */
 public enum BuiltInFunction {
-    PRINTB("printb", PrimitiveTypeInfo.BOOL, "PRINTB"),
-    PRINTC("printc", PrimitiveTypeInfo.CHAR, "PRINTC"),
-    PRINTI("printi", PrimitiveTypeInfo.INT, "PRINTI"),
-    PRINTD("printd", PrimitiveTypeInfo.DOUBLE, "PRINTD"),
-    PRINTS("prints", PrimitiveTypeInfo.STRING, "PRINTS");
+    PRINTB("printb", PrimitiveTypeInfo.BOOL),
+    PRINTC("printc", PrimitiveTypeInfo.CHAR),
+    PRINTI("printi", PrimitiveTypeInfo.INT),
+    PRINTD("printd", PrimitiveTypeInfo.DOUBLE),
+    PRINTS("prints", PrimitiveTypeInfo.STRING);
 
     private static final String PARAMETER_NAME = "value";
 
     private final String name;
     private final TypeInfo parameterType;
-    private final String vmInstruction;
 
-    BuiltInFunction(String name, TypeInfo parameterType, String vmInstruction) {
+    BuiltInFunction(String name, TypeInfo parameterType) {
         this.name = name;
         this.parameterType = parameterType;
-        this.vmInstruction = vmInstruction;
     }
 
     /**
@@ -84,7 +82,4 @@ public enum BuiltInFunction {
         return parameterType;
     }
 
-    public String getVmInstruction() {
-        return vmInstruction;
-    }
 }

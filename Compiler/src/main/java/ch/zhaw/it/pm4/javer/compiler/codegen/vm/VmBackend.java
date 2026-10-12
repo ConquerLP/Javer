@@ -10,13 +10,15 @@ import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
  */
 public final class VmBackend implements TargetBackend {
 
+    private final VmMetadata metadata = new VmMetadata();
+
     @Override
     public void prepare(CompilationUnit node, DiagnosticBag diagnostics) {
-        new VmPreparationVisitor().visit(node);
+        new VmPreparationVisitor(metadata).visit(node);
     }
 
     @Override
     public TargetCodeGenerator createCodeGenerator(DiagnosticBag diagnostics, String outputFilePath) {
-        return new VmCodeGenerator(diagnostics, outputFilePath);
+        return new VmCodeGenerator(diagnostics, outputFilePath, metadata);
     }
 }

@@ -33,6 +33,7 @@ public class Compiler {
 
     private final CompilerOptions options;
     private final CompilationContext context;
+    private final TargetBackend targetBackend;
     private boolean phaseAbortRequested;
 
     /**
@@ -42,6 +43,7 @@ public class Compiler {
      */
     public Compiler(CompilerOptions options) {
         this.options = options;
+        this.targetBackend = TargetBackendFactory.create(options.getTarget());
         SourceCache sourceCache = new SourceCache(options.getInputFilePath());
         this.context = new CompilationContext(
                 new DiagnosticBag(options.getInputFilePath(), 50, CompilationPhase.COMPILER_SETUP, sourceCache),
@@ -214,7 +216,7 @@ public class Compiler {
 
     private void prepareTarget(CompilationUnit node) {
         enterPhase(CompilationPhase.LAYOUT);
-        targetBackend().prepare(node, context.getDiagnosticBag());
+        targetBackend.prepare(node, context.getDiagnosticBag());
     }
 
     private void semanticAnalysis(CompilationUnit node) {
@@ -224,12 +226,8 @@ public class Compiler {
 
     private void generateCode(CompilationUnit node) {
         enterPhase(CompilationPhase.CODE_GENERATION);
-        targetBackend()
+        targetBackend
                 .createCodeGenerator(context.getDiagnosticBag(), options.getOutputFilePath())
                 .generate(node);
-    }
-
-    private TargetBackend targetBackend() {
-        return TargetBackendFactory.create(options.getTarget());
     }
 }
