@@ -60,17 +60,6 @@ public class VM {
     private boolean halted;
 
     /**
-     * Loads and parses a bytecode program.
-     *
-     * @param filePath path to the bytecode file
-     * @throws IOException    if the bytecode file cannot be read
-     * @throws ParseException if bytecode parsing fails
-     */
-    public VM(String filePath) throws IOException, ParseException {
-        this(filePath, DEFAULT_STACK_SIZE);
-    }
-
-    /**
      * Loads and parses a bytecode program with a custom VM stack size.
      *
      * @param filePath       path to the bytecode file
