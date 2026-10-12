@@ -19,14 +19,6 @@
         <release.app.dir>${project.build.directory}/app</release.app.dir>
     </properties>
 
-    <dependencies>
-        <dependency>
-            <groupId>ch.zhaw.it.pm4</groupId>
-            <artifactId>Misc</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
-
     <build>
         <plugins>
             <plugin>
@@ -60,64 +52,4 @@
         </plugins>
     </build>
 
-    <profiles>
-        <profile>
-            <id>windows-release</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-antrun-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>prepare-release-app-layout</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>run</goal>
-                                </goals>
-                                <configuration>
-                                    <target>
-                                        <mkdir dir="${release.app.dir}"/>
-                                        <copy file="${project.build.directory}/${project.build.finalName}-all.jar"
-                                              tofile="${release.app.dir}/${project.build.finalName}-all.jar"/>
-                                    </target>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>org.panteleyev</groupId>
-                        <artifactId>jpackage-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>package-app-image</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>jpackage</goal>
-                                </goals>
-                                <configuration>
-                                    <name>javer-compiler</name>
-                                    <appVersion>1.0</appVersion>
-                                    <vendor>ZHAW</vendor>
-                                    <description>Javer Compiler</description>
-                                    <input>${release.app.dir}</input>
-                                    <destination>${project.build.directory}/installer/compiler</destination>
-                                    <mainJar>${project.build.finalName}-all.jar</mainJar>
-                                    <mainClass>${main.class}</mainClass>
-                                    <javaOptions>
-                                        <option>-Dfile.encoding=UTF-8</option>
-                                        <option>-Dstdout.encoding=UTF-8</option>
-                                        <option>-Dstderr.encoding=UTF-8</option>
-                                    </javaOptions>
-                                    <type>APP_IMAGE</type>
-                                    <winConsole>true</winConsole>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

@@ -3,7 +3,6 @@ package ch.zhaw.it.pm4.javer.compiler.lexer;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
-import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,13 +52,11 @@ public class Lexer {
      * the parser relies on as a sentinel.
      */
     public List<Token> lexSourcecode() {
-        JaverLogger.info("Starting tokenization of " + sourceCode.length() + " characters");
         List<Token> tokens = new ArrayList<>();
         while (true) {
             Token token = nextToken();
             tokens.add(token);
             if (token.getTokenType() == TokenType.SPECIAL_END_OF_FILE) {
-                JaverLogger.info("Finished tokenization, produced " + tokens.size() + " token(s)");
                 return tokens;
             }
         }
@@ -113,9 +110,7 @@ public class Lexer {
 
     private Token makeToken(TokenType tokenType, String value) {
         SourceLocation location = defineSourceLocation();
-        Token token = new Token(tokenType, value, location);
-        JaverLogger.debug(String.format("Produced token %10s %50s at %20s", tokenType, value, location));
-        return token;
+        return new Token(tokenType, value, location);
     }
 
     /**
@@ -148,7 +143,6 @@ public class Lexer {
     private void error(String message) {
         SourceLocation location = defineSourceLocation();
         diagnostics.add(location, Severity.ERROR, message);
-        JaverLogger.error("error at " + location + ": " + message);
     }
 
     /**

@@ -14,7 +14,6 @@ import ch.zhaw.it.pm4.javer.compiler.misc.SourceLocation;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceRange;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
-import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.util.*;
 
@@ -241,18 +240,15 @@ public class Parser {
         String message = expected.size() == 1
                 ? String.format("Expected: %s; but found: %s.", formatExpectedTokens(expected), formatFoundToken(current))
                 : String.format("Expected one of: %s; but found: %s.", formatExpectedTokens(expected), formatFoundToken(current));
-        JaverLogger.error(message);
         diagnosticBag.add(location, Severity.ERROR, message);
     }
 
     private void reportInvalidTokenMapping(Token token, String context) {
         String message = "Invalid " + context + ": " + formatFoundToken(token) + ".";
-        JaverLogger.error(message);
         diagnosticBag.add(diagnosticLocation(token), Severity.ERROR, message);
     }
 
     private void reportSyntaxError(Token token, String message) {
-        JaverLogger.error(message);
         diagnosticBag.add(diagnosticLocation(token), Severity.ERROR, message);
     }
 

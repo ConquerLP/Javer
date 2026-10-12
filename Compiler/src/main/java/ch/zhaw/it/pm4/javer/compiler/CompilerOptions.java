@@ -1,7 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import ch.zhaw.it.pm4.misc.JaverLogger;
-
 import java.nio.file.Path;
 
 /**
@@ -16,14 +14,12 @@ public class CompilerOptions {
     //
     // - inputFilePath
     // - outputFilePath
-    // - loggingEnabled
     // - dumpLexer
     // - dumpAst
     // - dumpSymbolTable
 
     private final String inputFilePath;
     private final String outputFilePath;
-    private final boolean loggingEnabled;
     private final boolean dumpLexer;
     private final boolean dumpAst;
     private final boolean dumpSymbolTable;
@@ -31,14 +27,12 @@ public class CompilerOptions {
     private CompilerOptions(
             String inputFilePath,
             String outputFilePath,
-            boolean loggingEnabled,
             boolean dumpLexer,
             boolean dumpAst,
             boolean dumpSymbolTable) {
 
         this.inputFilePath = inputFilePath;
         this.outputFilePath = outputFilePath;
-        this.loggingEnabled = loggingEnabled;
         this.dumpLexer = dumpLexer;
         this.dumpAst = dumpAst;
         this.dumpSymbolTable = dumpSymbolTable;
@@ -49,13 +43,12 @@ public class CompilerOptions {
      *
      * @param args command-line options
      * @return validated compiler options
-     * @throws IllegalArgumentException if an option is unknown, missing, or has
-     *                                  an invalid path value
+     * @throws CompilerOptionException if an option is unknown, missing, or has
+     *                                 an invalid path value
      */
     public static CompilerOptions create(String... args) {
         String inputFilePath = null;
         String outputFilePath = null;
-        boolean loggingEnabled = false;
         boolean dumpLexer = false;
         boolean dumpAst = false;
         boolean dumpSymbolTable = false;
@@ -79,10 +72,8 @@ public class CompilerOptions {
                     case "--dump-lexer" -> dumpLexer = true;
                     case "--dump-ast" -> dumpAst = true;
                     case "--dump-symboltable" -> dumpSymbolTable = true;
-                    case "--logging" -> loggingEnabled = true;
                     default -> {
-                        JaverLogger.error("Unknown compiler option: " + arg);
-                        throw new IllegalArgumentException("Unknown compiler option: " + arg);
+                        throw new CompilerOptionException("Unknown compiler option: " + arg);
                     }
                 }
                 i++;
@@ -90,10 +81,7 @@ public class CompilerOptions {
         }
 
         if (inputFilePath == null || outputFilePath == null) {
-            JaverLogger.error("missing input or output files");
-            throw new IllegalArgumentException(
-                    "Usage: compiler --in-file <source.javer> --out-file <output-path-without-extension> " +
-                            "[--dump-lexer] [--dump-ast] [--dump-symboltable] [--logging]");
+            throw new CompilerOptionException("Missing input or output files.");
         }
 
         inputFilePath = validateInputFilePath(inputFilePath);
@@ -102,7 +90,6 @@ public class CompilerOptions {
         return new CompilerOptions(
                 inputFilePath,
                 outputFilePath,
-                loggingEnabled,
                 dumpLexer,
                 dumpAst,
                 dumpSymbolTable
@@ -111,7 +98,7 @@ public class CompilerOptions {
 
     private static String readRequiredValue(String[] args, int index, String optionName) {
         if (index >= args.length || args[index].startsWith("-")) {
-            throw new IllegalArgumentException("Missing value for compiler option: " + optionName);
+            throw new CompilerOptionException("Missing value for compiler option: " + optionName);
         }
         return args[index];
     }
@@ -119,7 +106,7 @@ public class CompilerOptions {
     private static String validateInputFilePath(String inputFilePath) {
         String fileName = fileName(inputFilePath);
         if (!fileName.endsWith(SOURCE_FILE_EXTENSION)) {
-            throw new IllegalArgumentException(
+            throw new CompilerOptionException(
                     "Input file must have extension " + SOURCE_FILE_EXTENSION + ": " + inputFilePath);
         }
         return inputFilePath;
@@ -128,12 +115,12 @@ public class CompilerOptions {
     private static String normalizeOutputFilePath(String outputFilePath) {
         String fileName = fileName(outputFilePath);
         if (fileName.endsWith(BYTECODE_FILE_EXTENSION)) {
-            throw new IllegalArgumentException(
+            throw new CompilerOptionException(
                     "Output path must be provided without " + BYTECODE_FILE_EXTENSION
                             + " extension: " + outputFilePath);
         }
         if (fileName.contains(".")) {
-            throw new IllegalArgumentException(
+            throw new CompilerOptionException(
                     "Output path must be provided without file extension: " + outputFilePath);
         }
         return outputFilePath + BYTECODE_FILE_EXTENSION;
@@ -160,13 +147,6 @@ public class CompilerOptions {
     }
 
     /**
-     * @return true when compiler-internal logging is enabled
-     */
-    public boolean isLoggingEnabled() {
-        return loggingEnabled;
-    }
-
-    /**
      * @return true when token dump output should be printed
      */
     public boolean isDumpLexer() {
@@ -185,5 +165,16 @@ public class CompilerOptions {
      */
     public boolean isDumpSymbolTable() {
         return dumpSymbolTable;
+    }
+
+    public static String usage() {
+        return "Usage: compiler --in-file <source.javer> --out-file <output-path-without-extension> "
+                + "[--dump-lexer] [--dump-ast] [--dump-symboltable]";
+    }
+
+    public static class CompilerOptionException extends IllegalArgumentException {
+        public CompilerOptionException(String message) {
+            super(message);
+        }
     }
 }

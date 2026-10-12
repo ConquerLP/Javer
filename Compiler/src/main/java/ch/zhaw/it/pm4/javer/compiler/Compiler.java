@@ -1,15 +1,14 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
+import ch.zhaw.it.pm4.javer.compiler.io.SourceFileReadException;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Lexer;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 import ch.zhaw.it.pm4.javer.compiler.parser.Parser;
 import ch.zhaw.it.pm4.javer.compiler.visitor.*;
-import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,25 +57,25 @@ public class Compiler {
         System.setProperty("MODULE", "compiler");
         try {
             CompilerOptions options = CompilerOptions.create(args);
-            configureLogging(options);
             Compiler compiler = new Compiler(options);
             compiler.compile();
             if (compiler.context.getDiagnosticBag().hasErrors()) {
                 System.exit(1);
             }
-        } catch (IllegalArgumentException exception) {
-            JaverLogger.error(exception.getMessage());
+        } catch (CompilerOptions.CompilerOptionException exception) {
+            System.err.println(exception.getMessage());
+            System.err.println(CompilerOptions.usage());
             System.exit(2);
+        } catch (SourceFileReadException exception) {
+            DiagnosticBag diagnostics = new DiagnosticBag(
+                    exception.getFilePath(),
+                    50,
+                    CompilationPhase.COMPILER_SETUP,
+                    null);
+            diagnostics.add(null, Severity.ERROR, exception.getMessage());
+            System.err.print(diagnostics.dumpReport());
+            System.exit(1);
         }
-    }
-
-    private static void configureLogging(CompilerOptions options) {
-        if (options.isLoggingEnabled()) {
-            return;
-        }
-
-        LoggerContext loggerContext = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
-        loggerContext.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).setLevel(Level.OFF);
     }
 
     private static void printSection(String title, String content) {

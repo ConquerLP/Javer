@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.vm;
 
-import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -153,7 +152,6 @@ public class VM {
             String arg = args[i];
             if ("--stack-size".equals(arg)) {
                 if (i + 1 >= args.length) {
-                    JaverLogger.error("Missing value for --stack-size");
                     throw new OptionParseException("Missing value for --stack-size");
                 }
                 i++;
@@ -163,12 +161,10 @@ public class VM {
             } else if ("--dump-on-error".equals(arg)) {
                 dumpOnRuntimeError = true;
             } else if (arg.startsWith("-")) {
-                JaverLogger.error("Unknown option: " + arg);
                 throw new OptionParseException("Unknown option: " + arg);
             } else if (filePath == null) {
                 filePath = arg;
             } else {
-                JaverLogger.error("Unexpected argument: " + arg);
                 throw new OptionParseException("Unexpected argument: " + arg);
             }
 
@@ -176,7 +172,6 @@ public class VM {
         }
 
         if (filePath == null) {
-            JaverLogger.error("Missing bytecode file path");
             throw new OptionParseException("Missing bytecode file path");
         }
 
@@ -186,7 +181,6 @@ public class VM {
     private static int parseStackSize(String rawValue) throws OptionParseException {
         String value = rawValue.trim().replace("_", "");
         if (value.isEmpty()) {
-            JaverLogger.error("Invalid --stack-size value: " + rawValue);
             throw new OptionParseException("Invalid --stack-size value: " + rawValue);
         }
 
@@ -211,21 +205,18 @@ public class VM {
         try {
             long stackSize = Math.multiplyExact(Long.parseLong(number), multiplier);
             if (stackSize < 1 || stackSize > MAX_STACK_SIZE) {
-                JaverLogger.error("--stack-size must be between 1 and " + MAX_STACK_SIZE + " bytes");
                 throw new OptionParseException(
                         "--stack-size must be between 1 and " + MAX_STACK_SIZE + " bytes"
                 );
             }
             return (int) stackSize;
         } catch (NumberFormatException | ArithmeticException e) {
-            JaverLogger.error("Invalid --stack-size value: " + rawValue);
             throw new OptionParseException("Invalid --stack-size value: " + rawValue);
         }
     }
 
     private static void validateStackSize(int stackSizeBytes) {
         if (stackSizeBytes < 1 || stackSizeBytes > MAX_STACK_SIZE) {
-            JaverLogger.error("stackSizeBytes must be between 1 and " + MAX_STACK_SIZE + " bytes");
             throw new IllegalArgumentException(
                     "stackSizeBytes must be between 1 and " + MAX_STACK_SIZE + " bytes"
             );
@@ -393,7 +384,6 @@ public class VM {
         }
         long end = Integer.toUnsignedLong(VM.CODE_BASE) + size;
         if (end > Integer.toUnsignedLong(HEAP_BASE)) {
-            JaverLogger.error("Code section exceeds reserved address range");
             throw new VMExecutionException("Code section exceeds reserved address range");
         }
         addRegion(new MemoryRegion(VM.CODE_BASE, size, false, "code", new byte[size]));
@@ -477,7 +467,6 @@ public class VM {
             throws ParseException {
         String[] parts = splitOperands(line);
         if (parts.length == 0 || parts[0].isBlank()) {
-            JaverLogger.error(LINE + lineNumber + ": empty instruction");
             throw new ParseException(LINE + lineNumber + ": empty instruction");
         }
 
@@ -486,7 +475,6 @@ public class VM {
         try {
             kind = InstructionKind.valueOf(instrName);
         } catch (IllegalArgumentException e) {
-            JaverLogger.error(LINE + lineNumber + ": unknown instruction '" + parts[0].trim() + "'");
             throw new ParseException(LINE + lineNumber + ": unknown instruction '" + parts[0].trim() + "'");
         }
 
@@ -582,18 +570,15 @@ public class VM {
                 ensureOperandCount(parts, 3, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
                 if (!label.startsWith("_")) {
-                    JaverLogger.error(LINE + lineNumber + ": CALL must target a function label (starting with _), got '" + label + "'");
                     throw new ParseException(LINE + lineNumber + ": CALL must target a function label (starting with _), got '" + label + "'");
                 }
                 int argBytes = parseIntOperand(parts[2], instrName, lineNumber);
                 if (argBytes < 0) {
-                    JaverLogger.error(LINE + lineNumber + ": CALL argBytes must be non-negative, got " + argBytes);
                     throw new ParseException(LINE + lineNumber + ": CALL argBytes must be non-negative, got " + argBytes);
                 }
                 pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
                 yield vm -> {
                     if (argBytes > vm.currentOperandBytes()) {
-                        JaverLogger.error(LINE + lineNumber + ": not enough bytes on stack for CALL argument (needed " + argBytes + ", but only " + vm.currentOperandBytes() + " available)");
                         throw new VMExecutionException("CALL: not enough bytes on stack for " + argBytes + " argument byte(s)");
                     }
                     vm.pushFrame(vm.pc + 1, argBytes);
@@ -604,7 +589,6 @@ public class VM {
                 ensureOperandCount(parts, 2, instrName, lineNumber);
                 int size = parseIntOperand(parts[1], instrName, lineNumber);
                 if (size < 0) {
-                    JaverLogger.error(LINE + lineNumber + ": ENTER size must be non-negative, got " + size);
                     throw new ParseException(LINE + lineNumber + ": ENTER size must be non-negative, got " + size);
                 }
                 yield vm -> vm.allocateStackBytes(size);
@@ -649,7 +633,6 @@ public class VM {
                 yield vm -> vm.pushInt(vm.frameAddress(offset, "LOCAL"));
             }
             default -> {
-                JaverLogger.error(INVALID_KIND + kind);
                 yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
             }
         };
@@ -671,7 +654,6 @@ public class VM {
                 int b = vm.popInt();
                 int a = vm.popInt();
                 if (b == 0) {
-                    JaverLogger.error(LINE + lineNumber + ": division by zero");
                     throw new VMExecutionException("Division by zero");
                 }
                 vm.pushInt(a / b);
@@ -680,7 +662,6 @@ public class VM {
                 int b = vm.popInt();
                 int a = vm.popInt();
                 if (b == 0) {
-                    JaverLogger.error(LINE + lineNumber + ": modulo by zero");
                     throw new VMExecutionException("Modulo by zero");
                 }
                 vm.pushInt(a % b);
@@ -696,13 +677,11 @@ public class VM {
                 double b = vm.popDouble();
                 double a = vm.popDouble();
                 if (b == 0.0) {
-                    JaverLogger.error(LINE + lineNumber + ": division by zero");
                     throw new VMExecutionException("Division by zero");
                 }
                 vm.pushDouble(a / b);
             });
             default -> {
-                JaverLogger.error(INVALID_KIND + kind);
                 yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
             }
         };
@@ -720,7 +699,6 @@ public class VM {
             case IEQ -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() == vm.popInt() ? 1 : 0));
             case INE -> noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popInt() != vm.popInt() ? 1 : 0));
             default -> {
-                JaverLogger.error(INVALID_KIND + kind);
                 yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
             }
         };
@@ -753,7 +731,6 @@ public class VM {
             case DNE ->
                     noOperand(parts, instrName, lineNumber, vm -> vm.pushInt(vm.popDouble() != vm.popDouble() ? 1 : 0));
             default -> {
-                JaverLogger.error(INVALID_KIND + kind);
                 yield vm -> vm.pushInt(vm.frameAddress(-1, ERROR));
             }
         };
@@ -775,7 +752,6 @@ public class VM {
         ensureOperandCount(parts, 2, instrName, lineNumber);
         String label = parseLabelOperand(parts[1], instrName, lineNumber);
         if (label.startsWith("_")) {
-            JaverLogger.error(LINE + lineNumber + ": " + instrName + " must target a normal label (without _), got '" + label + "'");
             throw new ParseException(LINE + lineNumber + ": " + instrName + " must target a normal label (without _), got '" + label + "'");
         }
         pendingJumpChecks.add(new PendingJumpCheck(label, lineNumber));
@@ -802,13 +778,11 @@ public class VM {
     private void parseDataLine(String line, int lineNumber) throws ParseException {
         String[] parts = line.split("\\s+");
         if (parts.length < 3) {
-            JaverLogger.error(LINE + lineNumber + ": invalid data declaration");
             throw new ParseException(LINE + lineNumber + ": invalid data declaration");
         }
 
         String name = parts[0];
         if (dataLabels.containsKey(name)) {
-            JaverLogger.error(LINE + lineNumber + ": duplicate data symbol '" + name + "'");
             throw new ParseException(LINE + lineNumber + ": duplicate data symbol '" + name + "'");
         }
 
@@ -816,11 +790,9 @@ public class VM {
         try {
             size = Integer.parseInt(parts[1]);
         } catch (NumberFormatException e) {
-            JaverLogger.error(LINE + lineNumber + ": invalid data element size '" + parts[1] + "'");
             throw new ParseException(LINE + lineNumber + ": invalid data element size '" + parts[1] + "'");
         }
         if (size != 1 && size != 2 && size != 4 && size != 8) {
-            JaverLogger.error(LINE + lineNumber + ": unsupported data element size " + size);
             throw new ParseException(LINE + lineNumber + ": unsupported data element size " + size);
         }
 
@@ -834,7 +806,6 @@ public class VM {
                 }
             }
         } catch (NumberFormatException e) {
-            JaverLogger.error(LINE + lineNumber + ": invalid hex literal in data section");
             throw new ParseException(LINE + lineNumber + ": invalid hex literal in data section");
         }
 
@@ -848,8 +819,6 @@ public class VM {
     private void ensureOperandCount(String[] parts, int expectedCount, String instrName, int lineNumber)
             throws ParseException {
         if (parts.length != expectedCount) {
-            JaverLogger.error(LINE + lineNumber + ": instruction '" + instrName + "' expects "
-                    + (expectedCount - 1) + " operand(s), got " + (parts.length - 1));
             throw new ParseException(
                     LINE + lineNumber + ": instruction '" + instrName + "' expects "
                             + (expectedCount - 1) + " operand(s), got " + (parts.length - 1)
@@ -871,7 +840,6 @@ public class VM {
         }
         if (size != 4 && size != 8) {
             String message = LINE + lineNumber + ": " + instrName + " size must be 4 or 8" + (allowZero ? " or 0" : "") + ", got " + size;
-            JaverLogger.error(message);
             throw new ParseException(message);
         }
         return size;
@@ -881,7 +849,6 @@ public class VM {
         try {
             return Integer.parseInt(operand.trim());
         } catch (NumberFormatException e) {
-            JaverLogger.error(LINE + lineNumber + ": invalid int operand '" + operand + "' for instruction '" + instrName + "'");
             throw new ParseException(LINE + lineNumber + ": invalid int operand '" + operand + "' for instruction '" + instrName + "'");
         }
     }
@@ -889,7 +856,6 @@ public class VM {
     private int parsePositiveIntOperand(String operand, String instrName, int lineNumber) throws ParseException {
         int value = parseIntOperand(operand, instrName, lineNumber);
         if (value <= 0) {
-            JaverLogger.error(LINE + lineNumber + ": " + instrName + " operand must be positive, got " + value);
             throw new ParseException(LINE + lineNumber + ": " + instrName + " operand must be positive, got " + value);
         }
         return value;
@@ -899,7 +865,6 @@ public class VM {
         try {
             return Double.parseDouble(operand.trim());
         } catch (NumberFormatException e) {
-            JaverLogger.error(LINE + lineNumber + ": invalid double operand '" + operand + "' for instruction '" + instrName + "'");
             throw new ParseException(LINE + lineNumber + ": invalid double operand '" + operand + "' for instruction '" + instrName + "'");
         }
     }
@@ -907,7 +872,6 @@ public class VM {
     private String parseLabelOperand(String operand, String instrName, int lineNumber) throws ParseException {
         String value = operand.trim();
         if (value.isEmpty()) {
-            JaverLogger.error(LINE + lineNumber + ": missing label operand for instruction '" + instrName + "'");
             throw new ParseException(LINE + lineNumber + ": missing label operand for instruction '" + instrName + "'");
         }
         return value;
@@ -917,7 +881,6 @@ public class VM {
             throws ParseException {
         String value = operand.trim();
         if (value.isEmpty()) {
-            JaverLogger.error(LINE + lineNumber + ": missing data name for instruction '" + instrName + "'");
             throw new ParseException(LINE + lineNumber + ": missing data name for instruction '" + instrName + "'");
         }
         return value;
@@ -938,7 +901,6 @@ public class VM {
 
     private void printErrors(List<String> errors) {
         for (String error : errors) {
-            JaverLogger.error(error);
             System.err.println(error);
         }
     }
@@ -949,7 +911,6 @@ public class VM {
     public void run() {
         Integer main = labels.get("_main");
         if (main == null) {
-            JaverLogger.error("No _main function found");
             throw new VMExecutionException("No _main function found");
         }
 
@@ -962,7 +923,6 @@ public class VM {
             try {
                 instruction.execute(this);
             } catch (VMExecutionException e) {
-                JaverLogger.error("Error at instruction address " + formatAddress(instructionAddress) + ": " + e.getMessage());
                 throw withInstructionLine(instructionAddress, e);
             }
             if (!halted) {
@@ -987,7 +947,6 @@ public class VM {
     private int resolveLabel(String labelName) {
         Integer target = labels.get(labelName);
         if (target == null) {
-            JaverLogger.error("Label '" + labelName + "' not found");
             throw new VMExecutionException("Label '" + labelName + "' not found");
         }
         return target;
@@ -996,7 +955,6 @@ public class VM {
     private int makeDataReference(String name) {
         Integer address = dataLabels.get(name);
         if (address == null) {
-            JaverLogger.error("Data object '" + name + "' not found");
             throw new VMExecutionException("Data object '" + name + "' not found");
         }
         return address;
@@ -1006,7 +964,6 @@ public class VM {
         int base = nextDataAddress;
         long end = Integer.toUnsignedLong(base) + Math.max(bytes.length, 1);
         if (end > Integer.toUnsignedLong(CODE_BASE)) {
-            JaverLogger.error("Data section exceeds reserved address range");
             throw new VMExecutionException("Data section exceeds reserved address range");
         }
         addRegion(new MemoryRegion(base, bytes.length, false, "data:" + name, bytes));
@@ -1016,13 +973,11 @@ public class VM {
 
     private int allocateHeapRegion(int size) {
         if (size < 0) {
-            JaverLogger.error("Negative heap allocation size: " + size);
             throw new VMExecutionException("Negative heap allocation size: " + size);
         }
         int base = nextHeapAddress;
         long end = Integer.toUnsignedLong(base) + Math.max(size, 1);
         if (end > stackBase) {
-            JaverLogger.error("Heap/stack address space exhausted");
             throw new VMExecutionException("Heap/stack address space exhausted");
         }
         addRegion(new MemoryRegion(base, size, true, "heap:" + formatAddress(base), new byte[size]));
@@ -1036,17 +991,14 @@ public class VM {
 
         Map.Entry<Integer, MemoryRegion> previous = regions.floorEntry(region.base());
         if (previous != null && previous.getKey().equals(region.base())) {
-            JaverLogger.error("Duplicate memory region at " + formatAddress(region.base()));
             throw new VMExecutionException("Duplicate memory region at " + formatAddress(region.base()));
         }
         if (previous != null && regionEnd(previous.getValue()) > base) {
-            JaverLogger.error("Memory region overlap at " + formatAddress(region.base()));
             throw new VMExecutionException("Memory region overlap at " + formatAddress(region.base()));
         }
 
         Map.Entry<Integer, MemoryRegion> next = regions.ceilingEntry(region.base());
         if (next != null && end > Integer.toUnsignedLong(next.getKey())) {
-            JaverLogger.error("Memory region overlap at " + formatAddress(region.base()));
             throw new VMExecutionException("Memory region overlap at " + formatAddress(region.base()));
         }
 
@@ -1059,24 +1011,20 @@ public class VM {
 
     private MemoryAccess resolveRegion(int address, int size) {
         if (size < 0) {
-            JaverLogger.error("Negative memory access size: " + size);
             throw new VMExecutionException("Negative memory access size: " + size);
         }
         if (address == NULL_REF) {
-            JaverLogger.error("Memory access to null reference (address=" + formatAddress(address) + SIZE + size + ")");
             throw new VMExecutionException("Null reference");
         }
 
         long start = Integer.toUnsignedLong(address);
         long end = start + size;
         if (end > ADDRESS_SPACE_SIZE) {
-            JaverLogger.error("Memory access out of bounds (address=" + formatAddress(address) + SIZE + size + ")");
             throw new VMExecutionException("Memory access out of bounds (address=" + formatAddress(address) + SIZE + size + ")");
         }
 
         Map.Entry<Integer, MemoryRegion> entry = regions.floorEntry(address);
         if (entry == null) {
-            JaverLogger.error("Invalid memory address: " + formatAddress(address));
             throw new VMExecutionException("Invalid memory address: " + formatAddress(address));
         }
 
@@ -1084,7 +1032,6 @@ public class VM {
         long regionBase = Integer.toUnsignedLong(region.base());
         long regionEnd = regionEnd(region);
         if (start < regionBase || end > regionEnd) {
-            JaverLogger.error("Memory access out of bounds (address=" + formatAddress(address) + SIZE + size + ")");
             throw new VMExecutionException(
                     region.name() + " access out of bounds (address=" + formatAddress(address) + SIZE + size + ")"
             );
@@ -1096,7 +1043,6 @@ public class VM {
     private MemoryAccess resolveWritableRegion(int address, int size) {
         MemoryAccess access = resolveRegion(address, size);
         if (!access.region().writable()) {
-            JaverLogger.error("Writable memory access to read-only region (address=" + formatAddress(address) + SIZE + size + ")");
             throw new VMExecutionException(access.region().name() + " is read-only");
         }
         return access;
@@ -1175,7 +1121,6 @@ public class VM {
         int sourceAddress = popInt();
         int targetAddress = popInt();
         if (size < 0) {
-            JaverLogger.error("MEMCPY: negative byte count " + size);
             throw new VMExecutionException("MEMCPY: negative byte count " + size);
         }
         if (size == 0) {
@@ -1195,14 +1140,12 @@ public class VM {
     private void executeNewArray(int elementSize) {
         int length = popInt();
         if (length < 0) {
-            JaverLogger.error("Negative array length: " + length);
             throw new VMExecutionException("Negative array length: " + length);
         }
 
         long payloadBytes = (long) length * elementSize;
         long allocationBytes = ARRAY_PAYLOAD_OFFSET_BYTES + payloadBytes;
         if (allocationBytes > Integer.MAX_VALUE) {
-            JaverLogger.error("Array allocation too large: length=" + length + ", elementSize=" + elementSize);
             throw new VMExecutionException("Array allocation too large: length=" + length + ", elementSize=" + elementSize);
         }
 
@@ -1216,18 +1159,15 @@ public class VM {
         int baseAddress = peekInt(4);
         MemoryAccess access = resolveRegion(baseAddress, ARRAY_LENGTH_BYTES);
         if (access.offset() != 0) {
-            JaverLogger.error("Array reference does not point to allocation start: " + formatAddress(baseAddress));
             throw new VMExecutionException("Array reference does not point to allocation start: " + formatAddress(baseAddress));
         }
 
         int length = readInt(baseAddress);
         long requiredBytes = ARRAY_PAYLOAD_OFFSET_BYTES + (long) length * elementSize;
         if (length < 0 || requiredBytes > access.region().size()) {
-            JaverLogger.error("Invalid array header at " + formatAddress(baseAddress));
             throw new VMExecutionException("Invalid array header at " + formatAddress(baseAddress));
         }
         if (index < 0 || index >= length) {
-            JaverLogger.error("Array index out of bounds: index=" + index + ", length=" + length);
             throw new VMExecutionException("Array index out of bounds: index=" + index + ", length=" + length);
         }
     }
@@ -1249,7 +1189,6 @@ public class VM {
 
         sp = fp + FRAME_HEADER_SIZE + argBytes;
         if (sp < stackBase || sp > STACK_LIMIT) {
-            JaverLogger.error("RET: restored stack pointer out of bounds");
             throw new VMExecutionException("RET: restored stack pointer is out of bounds");
         }
         fp = Integer.toUnsignedLong(previousFp);
@@ -1270,7 +1209,6 @@ public class VM {
 
     private int checkedAddress(long address, String sourceName) {
         if (address <= 0 || address >= ADDRESS_SPACE_SIZE) {
-            JaverLogger.error(sourceName + ": address out of bounds: " + formatAddress(address));
             throw new VMExecutionException(sourceName + ": address out of bounds: " + formatAddress(address));
         }
         return (int) address;
@@ -1312,22 +1250,18 @@ public class VM {
 
     private void ensureStackCapacity(int bytesToPush) {
         if (bytesToPush < 0) {
-            JaverLogger.error("Negative stack push size: " + bytesToPush);
             throw new VMExecutionException("Negative stack push size: " + bytesToPush);
         }
         if (sp - bytesToPush < stackBase) {
-            JaverLogger.error("Stack overflow while pushing " + bytesToPush + " byte(s)");
             throw new VMExecutionException("Stack overflow while pushing " + bytesToPush + " byte(s)");
         }
     }
 
     private void ensureStackAvailable(int bytesToPop) {
         if (bytesToPop < 0) {
-            JaverLogger.error("Negative stack pop size: " + bytesToPop);
             throw new VMExecutionException("Negative stack pop size: " + bytesToPop);
         }
         if (sp + bytesToPop > STACK_LIMIT) {
-            JaverLogger.error("Stack underflow while popping " + bytesToPop + " byte(s)");
             throw new VMExecutionException("Stack underflow while popping " + bytesToPop + " byte(s)");
         }
     }
@@ -1400,7 +1334,6 @@ public class VM {
     private int stackOffset(long address) {
         long offset = address - stackBase;
         if (offset < 0 || offset > stack.length) {
-            JaverLogger.error("Stack address out of bounds: " + formatAddress(address));
             throw new VMExecutionException("Stack address out of bounds: " + formatAddress(address));
         }
         return (int) offset;
@@ -1409,13 +1342,11 @@ public class VM {
     private void printNullTerminatedCharString(int address) {
         MemoryAccess access = resolveRegion(address, ARRAY_LENGTH_BYTES);
         if (access.offset() != 0) {
-            JaverLogger.error("PRINTS " + formatAddress(address) + ": string reference does not point to allocation start");
             throw new VMExecutionException("PRINTS " + formatAddress(address) + ": string reference does not point to allocation start");
         }
         int length = readInt(address);
         long payloadBytes = (long) length * Character.BYTES;
         if (length < 0 || payloadBytes > Integer.MAX_VALUE) {
-            JaverLogger.error("PRINTS " + formatAddress(address) + ": invalid string length " + length);
             throw new VMExecutionException("PRINTS " + formatAddress(address) + ": invalid string length " + length);
         }
         resolveRegion(address + ARRAY_PAYLOAD_OFFSET_BYTES, (int) payloadBytes);
@@ -1435,14 +1366,12 @@ public class VM {
         MemoryAccess leftAccess = resolveRegion(leftAddress, ARRAY_LENGTH_BYTES);
         MemoryAccess rightAccess = resolveRegion(rightAddress, ARRAY_LENGTH_BYTES);
         if (leftAccess.offset() != 0 || rightAccess.offset() != 0) {
-            JaverLogger.error("COMPARESTRINGS: string reference does not point to allocation start");
             throw new VMExecutionException("String reference does not point to allocation start");
         }
 
         int leftLength = readInt(leftAddress);
         int rightLength = readInt(rightAddress);
         if (leftLength < 0 || rightLength < 0) {
-            JaverLogger.error("COMPARESTRINGS: invalid string length");
             throw new VMExecutionException("Invalid string length");
         }
         if (leftLength != rightLength) {

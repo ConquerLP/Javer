@@ -15,7 +15,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.StructScope;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.misc.SourceRange;
-import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -520,7 +519,7 @@ public class AstPrinter extends AstNodeVisitorBase {
                     children.add(childIsLast -> scalarChild("type", dataEntry.getType(), null, childIsLast));
                     children.add(childIsLast -> scalarChild(VALUE, quoteValue(dataEntry.getValue()), null, childIsLast));
                 }
-                default -> JaverLogger.error("Invalid entry type " + entry.getClass());
+                default -> throw new IllegalStateException("Invalid entry type " + entry.getClass());
             }
             visitMany(children);
         }, isLast);
@@ -651,7 +650,6 @@ public class AstPrinter extends AstNodeVisitorBase {
         try {
             output.append(text);
         } catch (IOException exception) {
-            JaverLogger.error("Could not write AST dump: " + exception.getMessage());
             throw new UncheckedIOException("Could not write AST dump.", exception);
         }
     }

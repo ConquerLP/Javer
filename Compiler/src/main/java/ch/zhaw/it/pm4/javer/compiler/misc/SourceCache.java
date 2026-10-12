@@ -1,7 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler.misc;
 
 import ch.zhaw.it.pm4.javer.compiler.io.SourceFileReadException;
-import ch.zhaw.it.pm4.misc.JaverLogger;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +29,6 @@ public class SourceCache {
             this.sourceCode = Files.readString(Path.of(filePath), StandardCharsets.UTF_8);
             this.cachedLines = buildCache(this.sourceCode);
         } catch (IOException e) {
-            JaverLogger.error(e.getMessage());
             throw new SourceFileReadException(filePath, e);
         }
     }
