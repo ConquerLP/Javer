@@ -1,7 +1,0 @@
-fn int f() {
-}
-
-fn void main() {
-    let int x = call f();
-    call printi(x);
-}

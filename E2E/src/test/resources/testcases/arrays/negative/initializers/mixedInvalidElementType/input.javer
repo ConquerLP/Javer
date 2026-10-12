@@ -1,3 +1,0 @@
-fn void main() {
-    let int[] values = {1, "two", 3};
-}

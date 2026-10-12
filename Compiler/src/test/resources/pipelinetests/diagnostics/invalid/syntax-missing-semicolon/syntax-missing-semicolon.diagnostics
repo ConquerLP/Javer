@@ -1,9 +1,0 @@
-=== Error Report ===
-File: src/test/resources/pipelinetests/diagnostics/invalid/syntax-missing-semicolon/syntax-missing-semicolon.javer
-Phase: PARSING
-
-[ERROR] Expected: ';'; but found: }.
-  --> src/test/resources/pipelinetests/diagnostics/invalid/syntax-missing-semicolon/syntax-missing-semicolon.javer:2:18
-  |
-2 |     let int x = 1
-  |                  ^

@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/returns/negative/void/returnValueFromVoid/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Void function must not return a value.
-  --> E2E\src\test\resources\testcases/returns/negative/void/returnValueFromVoid/input.javer:2:5
-  |
-2 |     return 5;
-  |     ^^^^^^

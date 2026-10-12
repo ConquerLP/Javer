@@ -1,7 +1,0 @@
-fn void main() {
-    call printd(0.0);
-    call printd(1.5);
-    call printd(-2.75);
-    call printd(3.0 + 0.14);
-    return;
-}

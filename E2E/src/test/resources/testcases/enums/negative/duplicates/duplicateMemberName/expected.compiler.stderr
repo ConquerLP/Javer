@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/enums/negative/duplicates/duplicateMemberName/input.javer
-Phase: SYMBOL_TABLE_CREATION
-
-[ERROR] Duplicate enum item: red
-  --> E2E\src\test\resources\testcases/enums/negative/duplicates/duplicateMemberName/input.javer:3:5
-  |
-3 |     red
-  |     ^^^

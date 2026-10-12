@@ -1,8 +1,0 @@
-fn void main() {
-    let boolean t = true;
-    let boolean f = false;
-    call printb(!t);
-    call printb(!f);
-    call printb(!(t && f));
-    return;
-}

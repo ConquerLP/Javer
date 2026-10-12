@@ -1,4 +1,0 @@
-fn void main() {
-    call printb("abc" == "abc");
-    call printb("abc" == "def");
-}

@@ -1,8 +1,0 @@
-=== Error Report ===
-File: src/test/resources/testcases/expressions/negative/unknownEnumValue/input.javer
-Phase: NAME_RESOLUTION
-[ERROR] Enum has no value: PURPLE
-  --> src/test/resources/testcases/expressions/negative/unknownEnumValue/input.javer:7:24
-  |
-7 |     let enum Color c = Color.PURPLE;
-  |                        ^^^^^

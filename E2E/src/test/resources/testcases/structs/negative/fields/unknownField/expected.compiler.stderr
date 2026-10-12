@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/structs/negative/fields/unknownField/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Struct has no field: y
-  --> E2E\src\test\resources\testcases/structs/negative/fields/unknownField/input.javer:7:17
-  |
-7 |     call printi(s.y);
-  |                 ^

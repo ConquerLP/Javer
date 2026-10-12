@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/conditions/negative/if/intCondition/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] If condition must be boolean, but was: int
-  --> E2E\src\test\resources\testcases/conditions/negative/if/intCondition/input.javer:2:5
-  |
-2 |     if (1) {
-  |     ^^

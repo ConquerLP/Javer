@@ -1,9 +1,0 @@
-fn void main() {
-    let string s = null;
-    switch (s) {
-        case "x":
-            call prints("x");
-        case null:
-            call prints("null");
-    }
-}

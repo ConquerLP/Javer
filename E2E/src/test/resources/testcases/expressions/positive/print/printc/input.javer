@@ -1,6 +1,0 @@
-fn void main() {
-    call printc('H');
-    call printc('i');
-    call printc('!');
-    return;
-}

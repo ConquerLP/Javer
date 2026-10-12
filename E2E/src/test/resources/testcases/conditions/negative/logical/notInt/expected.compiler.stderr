@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/conditions/negative/logical/notInt/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Logical not requires a boolean operand.
-  --> E2E\src\test\resources\testcases/conditions/negative/logical/notInt/input.javer:2:21
-  |
-2 |     let boolean b = !1;
-  |                     ^

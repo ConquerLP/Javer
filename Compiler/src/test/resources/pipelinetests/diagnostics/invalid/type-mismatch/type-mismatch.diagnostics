@@ -1,9 +1,0 @@
-=== Error Report ===
-File: src/test/resources/pipelinetests/diagnostics/invalid/type-mismatch/type-mismatch.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Cannot initialize variable 'x' of type int with string.
-  --> src/test/resources/pipelinetests/diagnostics/invalid/type-mismatch/type-mismatch.javer:2:5
-  |
-2 |     let int x = "not an int";
-  |     ^^^

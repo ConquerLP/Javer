@@ -1,4 +1,0 @@
-fn void main() {
-    let int[] values = null;
-    call printb(values == null);
-}

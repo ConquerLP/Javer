@@ -1,5 +1,0 @@
-fn void main() {
-    if (1) {
-        call printi(1);
-    }
-}

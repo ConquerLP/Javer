@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/enums/negative/comparison/differentEnumTypes/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Equality operator requires compatible operands.
-  --> E2E\src\test\resources\testcases/enums/negative/comparison/differentEnumTypes/input.javer:10:17
-   |
-10 |     call printb(A.value == B.value);
-   |                 ^

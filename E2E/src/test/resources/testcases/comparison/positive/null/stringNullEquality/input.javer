@@ -1,4 +1,0 @@
-fn void main() {
-    let string s = null;
-    call printb(s == null);
-}

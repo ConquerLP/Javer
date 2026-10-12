@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/scopes/negative/declarationOrder/useBeforeDeclaration/input.javer
-Phase: NAME_RESOLUTION
-
-[ERROR] Undefined symbol: x
-  --> E2E\src\test\resources\testcases/scopes/negative/declarationOrder/useBeforeDeclaration/input.javer:2:5
-  |
-2 |     x = 1;
-  |     ^

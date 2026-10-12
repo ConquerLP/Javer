@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/declarations/negative/duplicates/duplicateStructName/input.javer
-Phase: SYMBOL_TABLE_CREATION
-
-[ERROR] Duplicate struct: S
-  --> E2E\src\test\resources\testcases/declarations/negative/duplicates/duplicateStructName/input.javer:5:1
-  |
-5 | struct S {
-  | ^^^^^^

@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/structs/negative/fields/fieldAccessOnNonStruct/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Member access requires a struct value.
-  --> E2E\src\test\resources\testcases/structs/negative/fields/fieldAccessOnNonStruct/input.javer:3:17
-  |
-3 |     call printi(x.y);
-  |                 ^

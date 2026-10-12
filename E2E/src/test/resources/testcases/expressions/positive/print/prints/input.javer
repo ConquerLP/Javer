@@ -1,6 +1,0 @@
-fn void main() {
-    call prints("hello world");
-    let string greeting = "from variable";
-    call prints(greeting);
-    return;
-}

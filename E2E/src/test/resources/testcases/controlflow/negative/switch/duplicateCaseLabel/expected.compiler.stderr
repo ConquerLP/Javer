@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/controlflow/negative/switch/duplicateCaseLabel/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Duplicate switch case label: int:INT:1.
-  --> E2E\src\test\resources\testcases/controlflow/negative/switch/duplicateCaseLabel/input.javer:5:14
-  |
-5 |         case 1:
-  |              ^

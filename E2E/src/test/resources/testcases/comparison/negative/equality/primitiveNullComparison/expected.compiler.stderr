@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/comparison/negative/equality/primitiveNullComparison/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Equality operator requires compatible operands.
-  --> E2E\src\test\resources\testcases/comparison/negative/equality/primitiveNullComparison/input.javer:2:17
-  |
-2 |     call printb(1 == null);
-  |                 ^

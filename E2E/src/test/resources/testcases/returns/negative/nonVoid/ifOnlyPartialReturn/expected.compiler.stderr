@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/returns/negative/nonVoid/ifOnlyPartialReturn/input.javer
-Phase: SEMANTIC_ANALYSIS
-
-[ERROR] Missing return statement for function: f
-  --> E2E\src\test\resources\testcases/returns/negative/nonVoid/ifOnlyPartialReturn/input.javer:1:1
-  |
-1 | fn int f(boolean b) {
-  | ^^

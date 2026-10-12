@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/conditions/negative/for/intCondition/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] For condition must be boolean, but was: int
-  --> E2E\src\test\resources\testcases/conditions/negative/for/intCondition/input.javer:2:5
-  |
-2 |     for (let int i = 0; 1; i++) {
-  |     ^^^

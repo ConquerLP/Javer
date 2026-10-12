@@ -1,8 +1,0 @@
-=== Error Report ===
-File: src/test/resources/testcases/controlflow/negative/switch/continueNoEnclosingLoop/input.javer
-Phase: SEMANTIC_ANALYSIS
-[ERROR] 'continue' used outside of a loop
-  --> src/test/resources/testcases/controlflow/negative/switch/continueNoEnclosingLoop/input.javer:6:13
-  |
-6 |             continue; // Invalid: switch is not a loop
-  |             ^^^^^^^^

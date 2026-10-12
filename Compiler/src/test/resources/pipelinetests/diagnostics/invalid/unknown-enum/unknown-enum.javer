@@ -1,9 +1,0 @@
-enum Color {
-    RED,
-    GREEN = 2,
-    BLUE
-}
-
-fn void main() {
-    let enum Color c = Color.GREY;
-}

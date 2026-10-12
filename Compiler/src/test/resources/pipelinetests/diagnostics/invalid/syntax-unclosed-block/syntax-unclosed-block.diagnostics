@@ -1,9 +1,0 @@
-=== Error Report ===
-File: src/test/resources/pipelinetests/diagnostics/invalid/syntax-unclosed-block/syntax-unclosed-block.javer
-Phase: PARSING
-
-[ERROR] Expected: '}'; but found: end of file.
-  --> src/test/resources/pipelinetests/diagnostics/invalid/syntax-unclosed-block/syntax-unclosed-block.javer:2:19
-  |
-2 |     let int x = 1;
-  |                   ^

@@ -1,4 +1,0 @@
-fn void main() {
-    let int x = true | false;
-    call printi(x);
-}

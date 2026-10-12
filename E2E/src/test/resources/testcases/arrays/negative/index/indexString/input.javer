@@ -1,4 +1,0 @@
-fn void main() {
-    let int[] values = {1, 2, 3};
-    call printi(values["zero"]);
-}

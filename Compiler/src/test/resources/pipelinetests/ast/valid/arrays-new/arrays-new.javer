@@ -1,5 +1,0 @@
-fn void main() {
-    let int[] numbers = new int[3] {1, 2, 3};
-    let string[] names = {"Ada", "Grace"};
-    numbers[0] = numbers[1] + numbers[2];
-}

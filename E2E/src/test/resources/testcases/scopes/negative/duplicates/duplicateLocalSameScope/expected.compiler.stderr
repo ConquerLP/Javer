@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/scopes/negative/duplicates/duplicateLocalSameScope/input.javer
-Phase: SYMBOL_TABLE_CREATION
-
-[ERROR] Duplicate symbol: x
-  --> E2E\src\test\resources\testcases/scopes/negative/duplicates/duplicateLocalSameScope/input.javer:3:5
-  |
-3 |     let int x = 2;
-  |     ^^^

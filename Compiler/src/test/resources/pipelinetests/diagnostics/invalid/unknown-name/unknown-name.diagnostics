@@ -1,9 +1,0 @@
-=== Error Report ===
-File: src/test/resources/pipelinetests/diagnostics/invalid/unknown-name/unknown-name.javer
-Phase: NAME_RESOLUTION
-
-[ERROR] Undefined symbol: x
-  --> src/test/resources/pipelinetests/diagnostics/invalid/unknown-name/unknown-name.javer:2:5
-  |
-2 |     x = 1;
-  |     ^

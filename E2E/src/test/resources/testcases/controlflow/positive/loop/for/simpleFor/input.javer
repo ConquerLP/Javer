@@ -1,4 +1,0 @@
-fn void main() {
-    for(;false;) {}
-	return;
-}

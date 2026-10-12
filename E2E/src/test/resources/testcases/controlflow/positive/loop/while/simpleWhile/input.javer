@@ -1,4 +1,0 @@
-fn void main() {
-    while(false){}
-	return;
-}

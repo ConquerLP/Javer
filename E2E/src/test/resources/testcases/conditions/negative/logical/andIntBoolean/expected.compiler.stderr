@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/conditions/negative/logical/andIntBoolean/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Logical operator requires boolean operands.
-  --> E2E\src\test\resources\testcases/conditions/negative/logical/andIntBoolean/input.javer:2:21
-  |
-2 |     let boolean b = 1 && true;
-  |                     ^

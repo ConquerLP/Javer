@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/scopes/negative/visibility/blockVariableOutOfScope/input.javer
-Phase: NAME_RESOLUTION
-
-[ERROR] Undefined symbol: x
-  --> E2E\src\test\resources\testcases/scopes/negative/visibility/blockVariableOutOfScope/input.javer:5:17
-  |
-5 |     call printi(x);
-  |                 ^

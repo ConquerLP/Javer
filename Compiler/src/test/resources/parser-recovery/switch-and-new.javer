@@ -1,9 +1,0 @@
-fn void main() {
-    switch(value) {
-        case 1 return;
-        case 2:
-            let int[] numbers = new int[];
-        default:
-            let int value = new int;
-    }
-}

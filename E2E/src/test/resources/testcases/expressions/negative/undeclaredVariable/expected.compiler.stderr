@@ -1,8 +1,0 @@
-=== Error Report ===
-File: src/test/resources/testcases/expressions/negative/undeclaredVariable/input.javer
-Phase: NAME_RESOLUTION
-[ERROR] Undefined symbol: b
-  --> src/test/resources/testcases/expressions/negative/undeclaredVariable/input.javer:2:17
-  |
-2 |     let int a = b + 1;
-  |                 ^

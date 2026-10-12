@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/returns/negative/nonVoid/emptyReturn/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Missing return value. Expected: int
-  --> E2E\src\test\resources\testcases/returns/negative/nonVoid/emptyReturn/input.javer:2:5
-  |
-2 |     return;
-  |     ^^^^^^

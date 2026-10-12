@@ -1,8 +1,0 @@
-fn void main() {
-    let int a = 12;
-    let int b = 10;
-    call printi(a & b);
-    call printi(a | b);
-    call printi(a ^ b);
-    return;
-}

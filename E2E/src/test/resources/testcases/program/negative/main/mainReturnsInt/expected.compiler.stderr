@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/program/negative/main/mainReturnsInt/input.javer
-Phase: SYMBOL_TABLE_CREATION
-
-[ERROR] Main signature must be exactly: fn void main().
-  --> E2E\src\test\resources\testcases/program/negative/main/mainReturnsInt/input.javer:1:1
-  |
-1 | fn int main() {
-  | ^^

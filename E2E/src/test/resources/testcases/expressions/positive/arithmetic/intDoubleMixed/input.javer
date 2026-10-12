@@ -1,8 +1,0 @@
-fn void main() {
-    let int i = 3;
-    let double d = 2.5;
-    call printd(i + d);
-    call printd(d * i);
-    call printd(i / d);
-    return;
-}

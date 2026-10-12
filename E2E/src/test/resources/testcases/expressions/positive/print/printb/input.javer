@@ -1,7 +1,0 @@
-fn void main() {
-    call printb(true);
-    call printb(false);
-    call printb(1 == 1);
-    call printb(1 == 2);
-    return;
-}

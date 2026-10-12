@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/comparison/negative/equality/incompatibleReferenceTypes/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Equality operator requires compatible operands.
-  --> E2E\src\test\resources\testcases/comparison/negative/equality/incompatibleReferenceTypes/input.javer:12:17
-   |
-12 |     call printb(a == b);
-   |                 ^

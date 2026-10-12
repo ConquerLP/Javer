@@ -1,4 +1,0 @@
-fn void main() {
-    x = 1;
-    let int x;
-}

@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/controlflow/negative/switch/booleanCaseNullInvalid/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Case label type null does not exactly match switch type boolean.
-  --> E2E\src\test\resources\testcases/controlflow/negative/switch/booleanCaseNullInvalid/input.javer:4:14
-  |
-4 |         case null:
-  |              ^^^^

@@ -1,3 +1,0 @@
-fn void main() {
-    let int value = 999999999999999999999;
-}

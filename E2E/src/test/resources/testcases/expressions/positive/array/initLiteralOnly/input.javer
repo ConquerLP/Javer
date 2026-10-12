@@ -1,7 +1,0 @@
-fn void main() {
-    let int[] nums = {7, 14, 21};
-    call printi(nums[0]);
-    call printi(nums[1]);
-    call printi(nums[2]);
-    return;
-}

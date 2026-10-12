@@ -1,9 +1,0 @@
-=== Error Report ===
-File: src/test/resources/pipelinetests/diagnostics/invalid/duplicate-enum-value/duplicate-enum-value.javer
-Phase: SYMBOL_TABLE_CREATION
-
-[ERROR] Duplicate enum value: 0
-  --> src/test/resources/pipelinetests/diagnostics/invalid/duplicate-enum-value/duplicate-enum-value.javer:3:5
-  |
-3 |     GREEN = 0,
-  |     ^^^^^

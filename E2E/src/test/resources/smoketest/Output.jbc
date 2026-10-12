@@ -1,9 +1,0 @@
-.code
-_main:
-ENTER, 0
-RET, 0
-_f:
-ENTER, 0
-RET, 0
-
-.data

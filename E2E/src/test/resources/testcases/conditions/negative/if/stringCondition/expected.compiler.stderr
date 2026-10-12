@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/conditions/negative/if/stringCondition/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] If condition must be boolean, but was: string
-  --> E2E\src\test\resources\testcases/conditions/negative/if/stringCondition/input.javer:2:5
-  |
-2 |     if ("hello") {
-  |     ^^

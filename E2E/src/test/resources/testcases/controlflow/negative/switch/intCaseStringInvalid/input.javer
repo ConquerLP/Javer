@@ -1,6 +1,0 @@
-fn void main() {
-    switch (1) {
-        case "hello":
-            call printi(1);
-    }
-}

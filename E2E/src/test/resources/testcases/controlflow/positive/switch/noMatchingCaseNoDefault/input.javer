@@ -1,9 +1,0 @@
-fn void main() {
-    switch (3) {
-        case 1:
-            call printi(1);
-        case 2:
-            call printi(2);
-    }
-    call printi(9);
-}

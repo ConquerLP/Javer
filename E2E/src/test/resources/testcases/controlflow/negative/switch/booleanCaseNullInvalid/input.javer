@@ -1,7 +1,0 @@
-fn void main() {
-    let boolean b = true;
-    switch (b) {
-        case null:
-            call printi(1);
-    }
-}

@@ -1,9 +1,0 @@
-.code
-_main:
-ENTER, 0
-PUSHI, 1
-PRINTI
-RET, 0
-
-.data
-enum_Color_values 4 00000000,00000001

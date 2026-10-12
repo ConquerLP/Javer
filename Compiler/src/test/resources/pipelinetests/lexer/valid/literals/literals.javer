@@ -1,7 +1,0 @@
-fn void main() {
-    let int i = 123;
-    let double d = 3.14;
-    let bool b = false;
-    let string s = "text";
-    let char c = 'x';
-}

@@ -1,9 +1,0 @@
-=== Error Report ===
-File: src/test/resources/pipelinetests/diagnostics/invalid/switch-default-normal/switch-default-normal.javer
-Phase: SEMANTIC_ANALYSIS
-
-[ERROR] Missing return statement for function: pick
-  --> src/test/resources/pipelinetests/diagnostics/invalid/switch-default-normal/switch-default-normal.javer:1:1
-  |
-1 | fn int pick(int value) {
-  | ^^

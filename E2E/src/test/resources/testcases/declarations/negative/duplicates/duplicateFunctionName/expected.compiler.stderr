@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/declarations/negative/duplicates/duplicateFunctionName/input.javer
-Phase: SYMBOL_TABLE_CREATION
-
-[ERROR] Duplicate function: f
-  --> E2E\src\test\resources\testcases/declarations/negative/duplicates/duplicateFunctionName/input.javer:4:1
-  |
-4 | fn void f() {
-  | ^^

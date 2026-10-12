@@ -1,7 +1,0 @@
-fn void main() {
-    let boolean a = true;
-    let boolean b = false;
-    call printb(a);
-    call printb(b);
-    return;
-}

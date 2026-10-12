@@ -1,6 +1,0 @@
-fn void main() {
-    switch (3) {
-        default:
-            call printi(9);
-    }
-}

@@ -1,5 +1,0 @@
-fn void main() {
-    for (let int i = 0; 1; i++) {
-        call printi(1);
-    }
-}

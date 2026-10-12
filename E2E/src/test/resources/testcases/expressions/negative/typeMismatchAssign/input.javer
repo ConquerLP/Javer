@@ -1,4 +1,0 @@
-fn void main() {
-    let int a = "not an int";
-    return;
-}

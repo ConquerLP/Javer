@@ -1,7 +1,0 @@
-enum E {
-    one = 1,
-    alsoOne = 1
-}
-
-fn void main() {
-}

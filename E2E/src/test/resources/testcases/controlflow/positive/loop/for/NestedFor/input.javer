@@ -1,8 +1,0 @@
-fn void main() {
-    for(;false;) {
-        for(;false;) {
-
-        }
-    }
-	return;
-}

@@ -1,9 +1,0 @@
-fn void main() {
-    let boolean t = true;
-    let boolean f = false;
-    call printb(t || t);
-    call printb(t || f);
-    call printb(f || t);
-    call printb(f || f);
-    return;
-}

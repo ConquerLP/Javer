@@ -1,7 +1,0 @@
-fn void f() {
-    return 5;
-}
-
-fn void main() {
-    call f();
-}

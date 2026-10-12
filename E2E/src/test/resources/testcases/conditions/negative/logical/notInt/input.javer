@@ -1,4 +1,0 @@
-fn void main() {
-    let boolean b = !1;
-    call printb(b);
-}

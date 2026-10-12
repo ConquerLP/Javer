@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/arrays/negative/index/indexString/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Index must be of type int.
-  --> E2E\src\test\resources\testcases/arrays/negative/index/indexString/input.javer:3:17
-  |
-3 |     call printi(values["zero"]);
-  |                 ^^^^^^

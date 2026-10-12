@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/bitwise/negative/and/charAndChar/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Bitwise and shift operators require integer operands.
-  --> E2E\src\test\resources\testcases/bitwise/negative/and/charAndChar/input.javer:2:17
-  |
-2 |     let int x = 'a' & 'b';
-  |                 ^^^

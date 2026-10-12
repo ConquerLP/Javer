@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/arrays/negative/assignment/assignPrimitiveToArray/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Cannot initialize variable 'values' of type int[] with int.
-  --> E2E\src\test\resources\testcases/arrays/negative/assignment/assignPrimitiveToArray/input.javer:2:5
-  |
-2 |     let int[] values = 5;
-  |     ^^^

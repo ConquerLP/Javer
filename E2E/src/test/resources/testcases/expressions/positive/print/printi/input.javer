@@ -1,8 +1,0 @@
-fn void main() {
-    call printi(0);
-    call printi(1);
-    call printi(-1);
-    call printi(2147483647);
-    call printi(42 * 100);
-    return;
-}

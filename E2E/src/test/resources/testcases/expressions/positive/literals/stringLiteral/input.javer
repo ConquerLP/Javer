@@ -1,8 +1,0 @@
-fn void main() {
-    let string a = "hello";
-    let string b = "world";
-    call prints(a);
-    call prints(b);
-    call prints("inline literal");
-    return;
-}

@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/comparison/negative/ordered/arrayLessThan/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Comparison operator requires numeric or char operands.
-  --> E2E\src\test\resources\testcases/comparison/negative/ordered/arrayLessThan/input.javer:4:17
-  |
-4 |     call printb(a < b);
-  |                 ^

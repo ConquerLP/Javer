@@ -1,4 +1,0 @@
-fn void main() {
-    let int x = 'a' & 'b';
-    call printi(x);
-}

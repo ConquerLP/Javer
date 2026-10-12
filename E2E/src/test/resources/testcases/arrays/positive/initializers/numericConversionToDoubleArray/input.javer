@@ -1,6 +1,0 @@
-fn void main() {
-    let double[] values = {1, 2.5, 3};
-    call printd(values[0]);
-    call printd(values[1]);
-    call printd(values[2]);
-}

@@ -1,6 +1,0 @@
-fn void main() {
-    let int[][] matrix = new int[2][3];
-    matrix[0][0] = 4;
-    matrix[1][2] = 8;
-    call printi(matrix[0][0] + matrix[1][2]);
-}

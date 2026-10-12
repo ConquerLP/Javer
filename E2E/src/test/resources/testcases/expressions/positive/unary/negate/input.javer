@@ -1,9 +1,0 @@
-fn void main() {
-    let int a = 7;
-    let double b = 3.5;
-    call printi(-a);
-    call printi(+a);
-    call printd(-b);
-    call printd(+b);
-    return;
-}

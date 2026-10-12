@@ -1,8 +1,34 @@
 # Javer
 
-This project makes an easy programming language with compiler to enable people to easily learn the logic of programming
-without being thrown into ceremony.
+Private fork of Javer with a simplified production-only build.
 
-## Download
+## Requirements
 
-[Download installer-windows.zip](https://github.com/jaeckraf/Javer/releases/download/v1.6.0/installer-windows.zip)
+- JDK 21
+- Windows for the `windows-release` export profile
+
+## Build for IDE use
+
+```powershell
+.\mvnw.cmd clean package
+```
+
+This builds:
+
+- `Compiler/target/Compiler-1.0-SNAPSHOT-all.jar`
+- `VM/target/VM-1.0-SNAPSHOT-all.jar`
+- `Application/target/Application-1.0-SNAPSHOT-all.jar`
+
+The application build also copies the compiler and VM jars to `Application/target/tools`.
+
+## Export Windows app image
+
+```powershell
+.\mvnw.cmd clean verify -Pwindows-release
+```
+
+The export zip is created at:
+
+```text
+Application/target/zipped/Application-app-image.zip
+```

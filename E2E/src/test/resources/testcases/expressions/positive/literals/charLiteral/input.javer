@@ -1,9 +1,0 @@
-fn void main() {
-    let char a = 'A';
-    let char b = 'z';
-    let char c = '7';
-    call printc(a);
-    call printc(b);
-    call printc(c);
-    return;
-}

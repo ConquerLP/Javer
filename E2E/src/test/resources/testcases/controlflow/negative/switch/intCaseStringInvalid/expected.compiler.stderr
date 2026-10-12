@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/controlflow/negative/switch/intCaseStringInvalid/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Case label type string does not exactly match switch type int.
-  --> E2E\src\test\resources\testcases/controlflow/negative/switch/intCaseStringInvalid/input.javer:3:14
-  |
-3 |         case "hello":
-  |              ^^^^^^^

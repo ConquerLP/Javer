@@ -1,9 +1,0 @@
-=== Error Report ===
-File: E2E\src\test\resources\testcases/structs/negative/fields/wrongFieldAssignmentType/input.javer
-Phase: TYPE_CHECKING
-
-[ERROR] Cannot assign string to int.
-  --> E2E\src\test\resources\testcases/structs/negative/fields/wrongFieldAssignmentType/input.javer:7:5
-  |
-7 |     s.x = "hello";
-  |     ^

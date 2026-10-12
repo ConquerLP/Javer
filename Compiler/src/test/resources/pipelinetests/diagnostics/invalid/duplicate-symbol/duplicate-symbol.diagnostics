@@ -1,9 +1,0 @@
-=== Error Report ===
-File: src/test/resources/pipelinetests/diagnostics/invalid/duplicate-symbol/duplicate-symbol.javer
-Phase: SYMBOL_TABLE_CREATION
-
-[ERROR] Duplicate symbol: value
-  --> src/test/resources/pipelinetests/diagnostics/invalid/duplicate-symbol/duplicate-symbol.javer:3:5
-  |
-3 |     let int value = 2;
-  |     ^^^

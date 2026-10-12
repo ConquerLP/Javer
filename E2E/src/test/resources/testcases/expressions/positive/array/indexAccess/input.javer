@@ -1,7 +1,0 @@
-fn void main() {
-    let int[] nums = {5, 10, 15, 20};
-    let int sum = nums[0] + nums[1] + nums[2] + nums[3];
-    call printi(sum);
-    call printi(nums[1] * nums[2]);
-    return;
-}

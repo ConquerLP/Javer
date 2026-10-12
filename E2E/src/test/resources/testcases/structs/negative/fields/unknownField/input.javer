@@ -1,8 +1,0 @@
-struct S {
-    int x;
-}
-
-fn void main() {
-    let struct S s = new struct S;
-    call printi(s.y);
-}

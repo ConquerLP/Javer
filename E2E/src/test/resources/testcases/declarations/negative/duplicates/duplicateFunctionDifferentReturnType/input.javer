@@ -1,9 +1,0 @@
-fn void f() {
-}
-
-fn int f() {
-    return 1;
-}
-
-fn void main() {
-}

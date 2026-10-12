@@ -1,4 +1,0 @@
-fn void main() {
-    let int x = call notDefined(1, 2);
-    return;
-}

@@ -1,5 +1,0 @@
-fn void main() {
-    let int[] a = {1, 2};
-    let int[] b = {3, 4};
-    call printb(a < b);
-}

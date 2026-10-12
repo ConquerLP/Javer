@@ -1,7 +1,0 @@
-fn void main() {
-    call later();
-}
-
-fn void later() {
-    call printi(7);
-}

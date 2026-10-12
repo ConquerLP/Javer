@@ -1,8 +1,0 @@
-fn int square(int x) {
-    return x * x;
-}
-
-fn void main() {
-    let int a = 4;
-    let int b = call square(a);
-}
