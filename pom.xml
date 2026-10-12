@@ -24,6 +24,8 @@
         <maven.clean.plugin.version>3.3.2</maven.clean.plugin.version>
         <maven.antrun.plugin.version>3.1.0</maven.antrun.plugin.version>
         <maven.resources.plugin.version>3.3.1</maven.resources.plugin.version>
+        <jpackage.plugin.version>1.7.4</jpackage.plugin.version>
+        <maven.build.timestamp.format>yyyyMMdd-HHmmss</maven.build.timestamp.format>
     </properties>
 
     <build>
@@ -63,6 +65,11 @@
                     <version>${maven.resources.plugin.version}</version>
                 </plugin>
 
+                <plugin>
+                    <groupId>org.panteleyev</groupId>
+                    <artifactId>jpackage-maven-plugin</artifactId>
+                    <version>${jpackage.plugin.version}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
 

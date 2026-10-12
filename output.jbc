@@ -1,8 +1,0 @@
-.code
-_main:
-ENTER, 0
-PUSHR, string_0
-PRINTS
-
-.data
-string_0 2 0048,0065,006C,006C,006F,0020,0077,006F,0072,006C,0064,0000

@@ -16,7 +16,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <main.class>ch.zhaw.it.pm4.javer.compiler.Compiler</main.class>
-        <release.app.dir>${project.build.directory}/app</release.app.dir>
+        <dist.dir>${project.parent.basedir}/dist/javer-${maven.build.timestamp}</dist.dir>
     </properties>
 
     <build>
@@ -52,4 +52,38 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>dist</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.panteleyev</groupId>
+                        <artifactId>jpackage-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>package-runtime-image</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>jpackage</goal>
+                                </goals>
+                                <configuration>
+                                    <name>javer-compiler</name>
+                                    <appVersion>1.0</appVersion>
+                                    <vendor>Javer</vendor>
+                                    <description>Javer Compiler</description>
+                                    <input>${project.build.directory}</input>
+                                    <destination>${dist.dir}</destination>
+                                    <mainJar>${project.build.finalName}-all.jar</mainJar>
+                                    <mainClass>${main.class}</mainClass>
+                                    <type>APP_IMAGE</type>
+                                    <winConsole>true</winConsole>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
