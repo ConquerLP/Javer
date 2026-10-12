@@ -27,8 +27,8 @@ The application build also copies the compiler and VM jars to `Application/targe
 .\mvnw.cmd clean verify -Pwindows-release
 ```
 
-The export zip is created at:
+The local app image is created at:
 
 ```text
-Application/target/zipped/Application-app-image.zip
+Application/target/installer/Application/
 ```

@@ -140,34 +140,6 @@
                 <plugins>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-clean-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>clean-release-dirs</id>
-                                <phase>prepare-package</phase>
-                                <goals>
-                                    <goal>clean</goal>
-                                </goals>
-                                <configuration>
-                                    <excludeDefaultDirectories>true</excludeDefaultDirectories>
-                                    <filesets>
-                                        <fileset>
-                                            <directory>${project.build.directory}/installer</directory>
-                                        </fileset>
-                                        <fileset>
-                                            <directory>${project.build.directory}/app</directory>
-                                        </fileset>
-                                        <fileset>
-                                            <directory>${project.build.directory}/zipped</directory>
-                                        </fileset>
-                                    </filesets>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-antrun-plugin</artifactId>
                         <executions>
                             <execution>
@@ -227,28 +199,6 @@
                                 </configuration>
                             </execution>
 
-                            <execution>
-                                <id>zip-app-image</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>run</goal>
-                                </goals>
-                                <configuration>
-                                    <target>
-                                        <fail message="Installer directory was not created: ${project.build.directory}/installer">
-                                            <condition>
-                                                <not>
-                                                    <available file="${project.build.directory}/installer" type="dir"/>
-                                                </not>
-                                            </condition>
-                                        </fail>
-
-                                        <mkdir dir="${project.build.directory}/zipped"/>
-                                        <zip destfile="${project.build.directory}/zipped/Application-app-image.zip"
-                                             basedir="${project.build.directory}/installer"/>
-                                    </target>
-                                </configuration>
-                            </execution>
                         </executions>
                     </plugin>
 
