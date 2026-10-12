@@ -6,7 +6,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 
 import java.util.Arrays;
 import java.util.List;
@@ -55,7 +54,8 @@ public enum BuiltInFunction {
 
     /**
      * Creates a function symbol representing this built-in function in the compiler symbol table.
-     * The symbol includes parameter metadata and VM stack layout information.
+     * The symbol includes semantic parameter metadata. Target-specific layout
+     * is added by the selected backend preparation pass.
      *
      * @return a fully initialized FunctionEntry for this built-in function
      */
@@ -67,13 +67,11 @@ public enum BuiltInFunction {
         FunctionScope scope = new FunctionScope();
         entry.setScope(scope);
 
-        int parameterBytes = VmLayout.stackBytes(parameterType);
-        entry.setParameterBytes(parameterBytes);
         scope.defineParameter(new ParameterEntry(
                 PARAMETER_NAME,
                 parameterType,
-                parameterBytes,
-                VmLayout.FRAME_HEADER_BYTES));
+                0,
+                0));
 
         return entry;
     }

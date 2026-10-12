@@ -11,7 +11,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.scope.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
-import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
@@ -143,7 +142,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
 
         Set<Integer> usedValues = new HashSet<>();
         int nextValue = 0;
-        int offsetBytes = 0;
 
         for (EnumItem item : node.getItems()) {
             int value = item.getValue() != null ? item.getValue() : nextValue;
@@ -157,8 +155,8 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
                     item.getName(),
                     entry,
                     value,
-                    entry.getElementSizeBytes(),
-                    offsetBytes,
+                    0,
+                    0,
                     entry.getDataLabel());
 
             if (!scope.defineEnumValue(valueEntry)) {
@@ -166,10 +164,7 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             }
 
             nextValue = value + 1;
-            offsetBytes += entry.getElementSizeBytes();
         }
-
-        entry.setSizeBytes(offsetBytes);
     }
 
     @Override
@@ -195,13 +190,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
     }
 
     private void defineParameters(FunctionDeclaration node, FunctionScope functionScope, FunctionEntry function) {
-        int parameterBytes = node.getParameters().stream()
-                .map(this::parameterType)
-                .mapToInt(VmLayout::stackBytes)
-                .sum();
-        function.setParameterBytes(parameterBytes);
-
-        int offsetBytes = VmLayout.FRAME_HEADER_BYTES + parameterBytes;
         for (int i = 0; i < node.getParameters().size(); i++) {
             FunctionParameter parameter = node.getParameters().get(i);
             boolean validVariadic = parameter.isVariadic() && i == node.getParameters().size() - 1;
@@ -212,13 +200,11 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
 
             TypeInfo elementType = resolveType(parameter.getType());
             TypeInfo type = parameter.isVariadic() ? new ArrayTypeInfo(elementType) : elementType;
-            int sizeBytes = VmLayout.stackBytes(type);
-            offsetBytes -= sizeBytes;
             ParameterEntry entry = new ParameterEntry(
                     parameter.getName(),
                     type,
-                    sizeBytes,
-                    offsetBytes,
+                    0,
+                    0,
                     validVariadic,
                     validVariadic ? elementType : null);
             if (validVariadic) {
@@ -231,28 +217,18 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         }
     }
 
-    private TypeInfo parameterType(FunctionParameter parameter) {
-        TypeInfo type = resolveType(parameter.getType());
-        return parameter.isVariadic() ? new ArrayTypeInfo(type) : type;
-    }
-
     @Override
     public void visit(StructDeclaration node) {
         StructScope structScope = node.getStructScope();
 
-        int offsetBytes = 0;
         for (StructField field : node.getFields()) {
             TypeInfo type = resolveType(field.getType());
-            int sizeBytes = type.sizeBytes();
-            FieldEntry entry = new FieldEntry(field.getName(), type, sizeBytes, offsetBytes);
+            FieldEntry entry = new FieldEntry(field.getName(), type, 0, 0);
 
             if (!structScope.defineField(entry)) {
                 diagnosticBag.add(field.getSourceRange().start(), Severity.ERROR, "Duplicate field: " + field.getName());
             }
-
-            offsetBytes += sizeBytes;
         }
-        structScope.setSizeBytes(offsetBytes);
     }
 
     @Override
@@ -299,13 +275,11 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         }
 
         TypeInfo type = resolveType(node.getType());
-        int sizeBytes = VmLayout.memoryWidth(type).bytes();
-        int offsetBytes = currentFunction != null ? currentFunction.allocateLocalBytes(sizeBytes) : 0;
         VariableEntry entry = new VariableEntry(
                 node.getName(),
                 type,
-                sizeBytes,
-                offsetBytes,
+                0,
+                0,
                 node.getInitializer() != null,
                 defaultValueOf(type),
                 nextVariableDeclarationOrder++);
@@ -318,28 +292,7 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
 
     @Override
     public void visit(NewExpression node) {
-        if (currentFunction != null
-                && node.getArrayInit() == null
-                && node.getDimensions().size() > 1
-                && node.getJaggedArrayTempLayout() == null) {
-            node.setJaggedArrayTempLayout(allocateJaggedArrayTempLayout(node.getDimensions().size()));
-        }
         super.visit(node);
-    }
-
-    private NewExpression.JaggedArrayTempLayout allocateJaggedArrayTempLayout(int dimensionCount) {
-        int[] dimensionOffsets = allocateTempOffsets(dimensionCount);
-        int[] baseOffsets = allocateTempOffsets(dimensionCount - 1);
-        int[] indexOffsets = allocateTempOffsets(dimensionCount - 1);
-        return new NewExpression.JaggedArrayTempLayout(dimensionOffsets, baseOffsets, indexOffsets);
-    }
-
-    private int[] allocateTempOffsets(int count) {
-        int[] offsets = new int[count];
-        for (int i = 0; i < count; i++) {
-            offsets[i] = currentFunction.allocateLocalBytes(VmLayout.WORD_BYTES);
-        }
-        return offsets;
     }
 
     @Override

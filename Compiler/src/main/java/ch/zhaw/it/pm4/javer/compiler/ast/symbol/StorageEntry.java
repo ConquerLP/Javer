@@ -9,8 +9,8 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 public abstract class StorageEntry extends SymbolEntry {
 
     private final TypeInfo type;
-    private final int sizeBytes;
-    private final int offsetBytes;
+    private int sizeBytes;
+    private int offsetBytes;
 
     protected StorageEntry(String name, TypeInfo type, int sizeBytes, int offsetBytes) {
         super(name);
@@ -27,7 +27,15 @@ public abstract class StorageEntry extends SymbolEntry {
         return sizeBytes;
     }
 
+    public void setSizeBytes(int sizeBytes) {
+        this.sizeBytes = sizeBytes;
+    }
+
     public int getOffsetBytes() {
         return offsetBytes;
+    }
+
+    public void setOffsetBytes(int offsetBytes) {
+        this.offsetBytes = offsetBytes;
     }
 }

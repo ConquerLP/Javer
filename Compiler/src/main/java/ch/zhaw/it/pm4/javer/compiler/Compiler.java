@@ -1,7 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.codegen.CodeGeneratorFactory;
+import ch.zhaw.it.pm4.javer.compiler.codegen.TargetBackend;
+import ch.zhaw.it.pm4.javer.compiler.codegen.TargetBackendFactory;
 import ch.zhaw.it.pm4.javer.compiler.io.SourceFileReadException;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Lexer;
 import ch.zhaw.it.pm4.javer.compiler.lexer.Token;
@@ -137,7 +138,7 @@ public class Compiler {
         if (stopAfterPhase()) {
             return;
         }
-        layout(rootNode);
+        prepareTarget(rootNode);
         if (stopAfterPhase()) {
             return;
         }
@@ -211,9 +212,9 @@ public class Compiler {
         new TypeCheckVisitor(context.getDiagnosticBag()).visit(node);
     }
 
-    private void layout(CompilationUnit node) {
+    private void prepareTarget(CompilationUnit node) {
         enterPhase(CompilationPhase.LAYOUT);
-        new LayoutVisitor().visit(node);
+        targetBackend().prepare(node, context.getDiagnosticBag());
     }
 
     private void semanticAnalysis(CompilationUnit node) {
@@ -223,9 +224,12 @@ public class Compiler {
 
     private void generateCode(CompilationUnit node) {
         enterPhase(CompilationPhase.CODE_GENERATION);
-        CodeGeneratorFactory.create(
-                options.getTarget(),
-                context.getDiagnosticBag(),
-                options.getOutputFilePath()).generate(node);
+        targetBackend()
+                .createCodeGenerator(context.getDiagnosticBag(), options.getOutputFilePath())
+                .generate(node);
+    }
+
+    private TargetBackend targetBackend() {
+        return TargetBackendFactory.create(options.getTarget());
     }
 }

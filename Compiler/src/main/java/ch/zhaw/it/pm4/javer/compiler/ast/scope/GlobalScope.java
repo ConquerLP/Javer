@@ -46,6 +46,10 @@ public final class GlobalScope {
         return enums.get(name);
     }
 
+    public Map<String, FunctionEntry> getFunctions() {
+        return functions;
+    }
+
     public EnumValueEntry resolveUniqueEnumValue(String name) {
         EnumValueEntry found = null;
         for (EnumEntry enumEntry : enums.values()) {

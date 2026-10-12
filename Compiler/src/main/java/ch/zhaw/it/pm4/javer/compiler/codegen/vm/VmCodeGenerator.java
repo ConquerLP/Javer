@@ -9,7 +9,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.EnumDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.declaration.FunctionDeclaration;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.scope.DataSection;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
 import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
@@ -42,7 +41,7 @@ public class VmCodeGenerator extends TextCodeGenerator {
     public static final String UNEXPECTED_CONVERSION_FROM = "Unexpected conversion from ";
 
     private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
-    private DataSection dataSection;
+    private VmDataSection dataSection;
     private FunctionEntry currentFunction;
     private int nextLabelId;
 
@@ -80,7 +79,7 @@ public class VmCodeGenerator extends TextCodeGenerator {
 
     @Override
     public void visit(CompilationUnit node) {
-        dataSection = node.getDataSection();
+        dataSection = new VmDataSection();
         writeLine(".code");
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             declaration.accept(this);

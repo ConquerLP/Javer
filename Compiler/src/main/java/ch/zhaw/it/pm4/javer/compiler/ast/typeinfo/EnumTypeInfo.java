@@ -10,11 +10,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
 public record EnumTypeInfo(EnumEntry entry) implements TypeInfo {
 
     @Override
-    public int sizeBytes() {
-        return REFERENCE_SIZE_BYTES;
-    }
-
-    @Override
     public String toString() {
         return "enum " + (entry == null ? "<unknown>" : entry.getName());
     }

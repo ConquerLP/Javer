@@ -70,6 +70,12 @@ public final class FunctionEntry extends SymbolEntry {
         return frameSizeBytes;
     }
 
+    public void resetFrameLayout() {
+        parameterBytes = 0;
+        localBytes = 0;
+        frameSizeBytes = 0;
+    }
+
     public boolean isBuiltIn() {
         return builtIn;
     }

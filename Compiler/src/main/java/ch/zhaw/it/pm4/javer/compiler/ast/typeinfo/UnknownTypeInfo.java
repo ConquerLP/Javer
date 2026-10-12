@@ -11,11 +11,6 @@ public final class UnknownTypeInfo implements TypeInfo {
     }
 
     @Override
-    public int sizeBytes() {
-        return 0;
-    }
-
-    @Override
     public String toString() {
         return "<unknown>";
     }

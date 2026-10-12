@@ -14,11 +14,6 @@ public record ArrayTypeInfo(TypeInfo elementType) implements TypeInfo {
     }
 
     @Override
-    public int sizeBytes() {
-        return REFERENCE_SIZE_BYTES;
-    }
-
-    @Override
     public String toString() {
         return elementType + "[]";
     }

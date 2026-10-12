@@ -7,8 +7,8 @@ public final class EnumValueEntry extends SymbolEntry {
 
     private final EnumEntry ownerEnum;
     private final int value;
-    private final int sizeBytes;
-    private final int offsetBytes;
+    private int sizeBytes;
+    private int offsetBytes;
     private final String dataLabel;
 
     public EnumValueEntry(String name, EnumEntry ownerEnum, int value, int sizeBytes, int offsetBytes, String dataLabel) {
@@ -32,8 +32,16 @@ public final class EnumValueEntry extends SymbolEntry {
         return sizeBytes;
     }
 
+    public void setSizeBytes(int sizeBytes) {
+        this.sizeBytes = sizeBytes;
+    }
+
     public int getOffsetBytes() {
         return offsetBytes;
+    }
+
+    public void setOffsetBytes(int offsetBytes) {
+        this.offsetBytes = offsetBytes;
     }
 
     public String getDataLabel() {

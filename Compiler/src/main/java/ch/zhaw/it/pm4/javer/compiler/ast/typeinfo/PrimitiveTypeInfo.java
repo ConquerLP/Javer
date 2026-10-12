@@ -28,18 +28,6 @@ public record PrimitiveTypeInfo(PrimitiveTypeKind kind) implements TypeInfo {
     }
 
     @Override
-    public int sizeBytes() {
-        return switch (kind) {
-            case BOOL -> 1;
-            case CHAR -> 2;
-            case INT -> 4;
-            case DOUBLE -> 8;
-            case STRING -> REFERENCE_SIZE_BYTES;
-            case INVALID -> 0;
-        };
-    }
-
-    @Override
     public String toString() {
         if (kind == PrimitiveTypeKind.BOOL) {
             return "boolean";
