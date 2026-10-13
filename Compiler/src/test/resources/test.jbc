@@ -1,6 +1,9 @@
 .code
 _main:
 ENTER, 0
+PUSHR, string_0
+PRINTS
 RET, 0
 
 .data
+string_0 1 04,00,00,00,54,00,65,00,73,00,74,00

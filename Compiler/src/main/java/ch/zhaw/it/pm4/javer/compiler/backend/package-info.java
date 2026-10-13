@@ -1,2 +1,2 @@
-/** Target selection contracts, prepared programs, and in-memory output generation. */
+/** Target validation, frozen layout preparation, and exhaustive generation from immutable IR. */
 package ch.zhaw.it.pm4.javer.compiler.backend;

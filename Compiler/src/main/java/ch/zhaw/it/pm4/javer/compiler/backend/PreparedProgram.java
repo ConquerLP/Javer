@@ -1,11 +1,10 @@
 package ch.zhaw.it.pm4.javer.compiler.backend;
 
 import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
-import java.util.Optional;
+import ch.zhaw.it.pm4.javer.compiler.diagnostics.PhaseResult;
 
-/** Owns one checked program and its target preparation; no separate prepare call is needed. */
+/** An immutable IR program bound to its validated target preparation. */
 public interface PreparedProgram {
     String dumpSymbolTable();
-
-    Optional<OutputArtifact> generate(DiagnosticBag diagnostics);
+    PhaseResult<OutputArtifact> generate(DiagnosticBag diagnostics);
 }

@@ -1,9 +1,8 @@
 package ch.zhaw.it.pm4.javer.compiler.backend;
 
-import ch.zhaw.it.pm4.javer.compiler.frontend.CheckedProgram;
-import java.util.Optional;
+import ch.zhaw.it.pm4.javer.compiler.diagnostics.PhaseResult;
 
-/** Emits an in-memory artifact from a checked program; performs no filesystem operations. */
+/** An emitter bound to its prepared program; no caller can substitute another tree. */
 public interface TargetCodeGenerator {
-    Optional<OutputArtifact> generate(CheckedProgram program);
+    PhaseResult<OutputArtifact> generate();
 }

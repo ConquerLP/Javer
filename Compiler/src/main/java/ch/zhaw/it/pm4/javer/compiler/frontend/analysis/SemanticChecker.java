@@ -11,6 +11,7 @@ import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.diagnostics.Severity;
 
 import java.util.List;
+import java.util.EnumSet;
 
 /**
  * Performs semantic checks that depend on control-flow context, such as
@@ -59,8 +60,8 @@ public class SemanticChecker extends AstNodeVisitorBase {
         }
         FunctionEntry function = node.getSymbolEntry();
         TypeInfo returnType = function.getReturnType();
-        Completion completion = analyzeCompletion(node.getBody());
-        if (!(returnType instanceof VoidTypeInfo) && completion == Completion.NORMAL) {
+        EnumSet<Completion> completion = analyzeCompletion(node.getBody());
+        if (!(returnType instanceof VoidTypeInfo) && completion.contains(Completion.NORMAL)) {
             diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
                     "Missing return statement for function: " + node.getName());
         }
@@ -126,188 +127,65 @@ public class SemanticChecker extends AstNodeVisitorBase {
         }
     }
 
-    private Completion analyzeCompletion(StatementAstNode statement) {
-        if (statement instanceof ReturnStatement) {
-            return Completion.RETURNS;
-        }
-        if (statement instanceof BlockStatement block) {
-            return analyzeBlock(block);
-        }
-        if (statement instanceof IfStatement ifStatement) {
-            return analyzeIf(ifStatement);
-        }
-        if (statement instanceof SwitchStatement switchStatement) {
-            return analyzeSwitch(switchStatement);
-        }
-        if (statement instanceof WhileStatement whileStatement) {
-            return analyzeWhile(whileStatement);
-        }
-        if (statement instanceof ForStatement forStatement) {
-            return analyzeFor(forStatement);
-        }
-        if (statement instanceof DoWhileStatement doWhileStatement) {
-            return analyzeDoWhile(doWhileStatement);
-        }
-        return Completion.NORMAL;
-    }
-
-    private Completion analyzeBlock(BlockStatement block) {
-        for (StatementAstNode statement : block.getStatements()) {
-            Completion completion = analyzeCompletion(statement);
-            if (completion != Completion.NORMAL) {
-                return completion;
+    /** Possible exits of reachable paths; blocks stop following paths after an abrupt exit. */
+    private EnumSet<Completion> analyzeCompletion(StatementAstNode statement) {
+        return switch (statement) {
+            case ReturnStatement ignored -> EnumSet.of(Completion.RETURNS);
+            case BreakStatement ignored -> EnumSet.of(Completion.BREAKS);
+            case ContinueStatement ignored -> EnumSet.of(Completion.CONTINUES);
+            case BlockStatement block -> {
+                EnumSet<Completion> result = EnumSet.of(Completion.NORMAL);
+                for (StatementAstNode child : block.getStatements()) {
+                    if (!result.remove(Completion.NORMAL)) break;
+                    result.addAll(analyzeCompletion(child));
+                }
+                yield result;
             }
-        }
-        return Completion.NORMAL;
-    }
-
-    private Completion analyzeIf(IfStatement ifStatement) {
-        if (ifStatement.getElseBranch() == null) {
-            return Completion.NORMAL;
-        }
-        Completion thenCompletion = analyzeCompletion(ifStatement.getThenBranch());
-        Completion elseCompletion = analyzeCompletion(ifStatement.getElseBranch());
-        if (thenCompletion == Completion.NORMAL || elseCompletion == Completion.NORMAL) {
-            return Completion.NORMAL;
-        }
-        if (thenCompletion == Completion.RETURNS && elseCompletion == Completion.RETURNS) {
-            return Completion.RETURNS;
-        }
-        return Completion.DOES_NOT_COMPLETE;
-    }
-
-    private Completion analyzeSwitch(SwitchStatement switchStatement) {
-        boolean hasDefault = false;
-        boolean allCasesReturn = true;
-        for (SwitchCase switchCase : switchStatement.getCases()) {
-            if (switchCase.isDefault()) {
-                hasDefault = true;
+            case IfStatement branch -> {
+                Boolean constant = booleanConstant(branch.getCondition());
+                if (Boolean.TRUE.equals(constant)) yield analyzeCompletion(branch.getThenBranch());
+                EnumSet<Completion> other = branch.getElseBranch() == null ? EnumSet.of(Completion.NORMAL) : analyzeCompletion(branch.getElseBranch());
+                if (Boolean.FALSE.equals(constant)) yield other;
+                other.addAll(analyzeCompletion(branch.getThenBranch()));
+                yield other;
             }
-            Completion completion = analyzeCompletion(switchCase.getStatement());
-            if (completion == Completion.NORMAL) {
-                return Completion.NORMAL;
+            case SwitchStatement selection -> {
+                EnumSet<Completion> result = EnumSet.noneOf(Completion.class);
+                boolean hasDefault = false;
+                for (SwitchCase branch : selection.getCases()) {
+                    hasDefault |= branch.isDefault();
+                    result.addAll(analyzeCompletion(branch.getStatement()));
+                }
+                if (!hasDefault) result.add(Completion.NORMAL);
+                yield result;
             }
-            if (completion != Completion.RETURNS) {
-                allCasesReturn = false;
-            }
-        }
-        if (!hasDefault) {
-            return Completion.NORMAL;
-        }
-        return allCasesReturn ? Completion.RETURNS : Completion.DOES_NOT_COMPLETE;
+            case WhileStatement loop -> analyzeLoop(loop.getCondition(), loop.getBody(), false);
+            case DoWhileStatement loop -> analyzeLoop(loop.getCondition(), loop.getBody(), true);
+            case ForStatement loop -> analyzeLoop(loop.getCondition(), loop.getBody(), false);
+            default -> EnumSet.of(Completion.NORMAL);
+        };
     }
 
-    private Completion analyzeWhile(WhileStatement statement) {
-        return analyzeInfiniteLoop(
-                statement.getCondition(),
-                statement.getBody(),
-                statement);
+    private EnumSet<Completion> analyzeLoop(ExpressionAstNode condition, StatementAstNode body, boolean atLeastOnce) {
+        Boolean constant = condition == null ? Boolean.TRUE : booleanConstant(condition);
+        if (!atLeastOnce && Boolean.FALSE.equals(constant)) return EnumSet.of(Completion.NORMAL);
+        EnumSet<Completion> result = EnumSet.noneOf(Completion.class);
+        if (!atLeastOnce && !Boolean.TRUE.equals(constant)) result.add(Completion.NORMAL);
+        EnumSet<Completion> bodyExits = analyzeCompletion(body);
+        if (bodyExits.contains(Completion.RETURNS)) result.add(Completion.RETURNS);
+        if (bodyExits.contains(Completion.DIVERGES)) result.add(Completion.DIVERGES);
+        if (bodyExits.contains(Completion.BREAKS)) result.add(Completion.NORMAL);
+        if (bodyExits.contains(Completion.NORMAL) || bodyExits.contains(Completion.CONTINUES)) {
+            if (!Boolean.TRUE.equals(constant)) result.add(Completion.NORMAL);
+            if (!Boolean.FALSE.equals(constant)) result.add(Completion.DIVERGES);
+        }
+        return result;
     }
 
-    private Completion analyzeFor(ForStatement statement) {
-        if (statement.getCondition() != null || containsBreak(statement.getBody())) {
-            return Completion.NORMAL;
-        }
-        Completion bodyCompletion = analyzeCompletion(statement.getBody());
-        if (bodyCompletion == Completion.RETURNS) {
-            return Completion.RETURNS;
-        }
-        if (bodyCompletion == Completion.NORMAL && containsReturn(statement.getBody())) {
-            warnComplexInfiniteLoop(statement);
-        }
-        return Completion.DOES_NOT_COMPLETE;
+    private Boolean booleanConstant(ExpressionAstNode expression) {
+        return expression instanceof LiteralExpression<?> literal && literal.getKind() == LiteralKind.BOOLEAN
+                ? (Boolean) literal.getValue() : null;
     }
 
-    private Completion analyzeDoWhile(DoWhileStatement statement) {
-        return analyzeInfiniteLoop(
-                statement.getCondition(),
-                statement.getBody(),
-                statement);
-    }
-
-    private Completion analyzeInfiniteLoop(
-            ExpressionAstNode condition,
-            StatementAstNode body,
-            StatementAstNode loopStatement) {
-
-        if (isNotBooleanLiteralTrue(condition) || containsBreak(body)) {
-            return Completion.NORMAL;
-        }
-
-        Completion bodyCompletion = analyzeCompletion(body);
-
-        if (bodyCompletion == Completion.RETURNS) {
-            return Completion.RETURNS;
-        }
-
-        if (bodyCompletion == Completion.NORMAL && containsReturn(body)) {
-            warnComplexInfiniteLoop(loopStatement);
-        }
-
-        return Completion.DOES_NOT_COMPLETE;
-    }
-
-    private boolean isNotBooleanLiteralTrue(ExpressionAstNode expression) {
-        return !(expression instanceof LiteralExpression<?> literal)
-                || literal.getKind() != LiteralKind.BOOLEAN
-                || !Boolean.TRUE.equals(literal.getValue());
-    }
-
-    private boolean containsReturn(StatementAstNode statement) {
-        if (statement instanceof ReturnStatement) {
-            return true;
-        }
-        if (statement instanceof BlockStatement block) {
-            return block.getStatements().stream().anyMatch(this::containsReturn);
-        }
-        if (statement instanceof IfStatement ifStatement) {
-            return containsReturn(ifStatement.getThenBranch())
-                    || (ifStatement.getElseBranch() != null && containsReturn(ifStatement.getElseBranch()));
-        }
-        if (statement instanceof SwitchStatement switchStatement) {
-            return switchStatement.getCases().stream()
-                    .map(SwitchCase::getStatement)
-                    .anyMatch(this::containsReturn);
-        }
-        if (statement instanceof WhileStatement whileStatement) {
-            return containsReturn(whileStatement.getBody());
-        }
-        if (statement instanceof ForStatement forStatement) {
-            return containsReturn(forStatement.getBody());
-        }
-        if (statement instanceof DoWhileStatement doWhileStatement) {
-            return containsReturn(doWhileStatement.getBody());
-        }
-        return false;
-    }
-
-    private boolean containsBreak(StatementAstNode statement) {
-        if (statement instanceof BreakStatement) {
-            return true;
-        }
-        if (statement instanceof BlockStatement block) {
-            return block.getStatements().stream().anyMatch(this::containsBreak);
-        }
-        if (statement instanceof IfStatement ifStatement) {
-            return containsBreak(ifStatement.getThenBranch())
-                    || (ifStatement.getElseBranch() != null && containsBreak(ifStatement.getElseBranch()));
-        }
-        if (statement instanceof SwitchStatement switchStatement) {
-            return switchStatement.getCases().stream()
-                    .map(SwitchCase::getStatement)
-                    .anyMatch(this::containsBreak);
-        }
-        return false;
-    }
-
-    private void warnComplexInfiniteLoop(StatementAstNode statement) {
-        diagnosticBag.add(statement.getSourceRange().start(), Severity.WARNING,
-                "Infinite loop contains conditional return; normal completion is impossible but return is not definite.");
-    }
-
-    private enum Completion {
-        NORMAL,
-        RETURNS,
-        DOES_NOT_COMPLETE
-    }
+    private enum Completion { NORMAL, RETURNS, BREAKS, CONTINUES, DIVERGES }
 }

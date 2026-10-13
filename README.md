@@ -61,6 +61,7 @@ Compiler options:
 --target vm|fanuc-macro-b
 --dump-lexer
 --dump-ast
+--dump-ir
 --dump-symboltable
 ```
 
@@ -69,39 +70,41 @@ backend placeholder and does not yet emit a program or provide built-in function
 
 ## Compiler architecture
 
-`Compiler` selects the target and coordinates analysis, preparation, generation,
-and writing the completed output:
+```text
+source -> frontend checks -> normalized, verified IR -> target validation
+       -> target layout -> artifact generation -> artifact writer
+```
 
-- `frontend.Frontend` performs lexing, parsing, symbol declaration, name
-  resolution, type checking, and semantic analysis. It returns
-  `Optional<CheckedProgram>`; only the frontend can construct a checked program.
-  Lexer, parser, AST nodes, symbols, and scopes live under `frontend`.
-  Language checks live in `frontend.analysis`, generic AST traversal in
-  `frontend.ast`, and diagnostic dumps in `frontend.debug`.
-  The semantic tree contains no target layouts and backends treat it as read-only.
-  The language requires exactly one `fn void main()`; the frontend validates it.
-- `backend.TargetBackend` supplies immutable `BuiltInSignature` descriptions.
-  The frontend creates its own function symbols and parameter scopes from them.
-  Preparation accepts a `CheckedProgram` and returns a `PreparedProgram` that
-  binds that program to its target-specific metadata. The backend itself keeps
-  no per-compilation state.
-- `PreparedProgram.generate()` returns an optional immutable `OutputArtifact`.
-  Generators perform no filesystem operations; artifacts can contain UTF-8 text
-  or binary data. `io.ArtifactWriter` writes the completed artifact through a
-  temporary file, using atomic replacement where supported. Failed analysis or
-  generation leaves any existing destination file untouched.
+`frontend.Frontend` checks the language, including exactly one `fn void main()`,
+then lowers the mutable AST into an immutable structured `ir.Ir.Program`.
+`CheckedProgram` contains only this verified IR. Backends never receive frontend
+AST nodes, mutable symbols, or frontend type rules.
 
-The VM backend owns runtime functions, labels, data
-encoding, storage and frame layouts, and temporary array allocation slots.
-Each `VmPreparedProgram` owns fresh `VmMetadata`, including temporary slots keyed
-by AST node. Generators and symbol-table dumps use that same preparation result,
-so the AST and layout cannot be accidentally paired through separate API calls.
-The generic symbol-table printer displays semantic information without target
-layout fields.
+Language normalization makes initialization, casts, variadic argument packing,
+and assignment/increment side effects explicit. Operands and function arguments
+execute left to right; assignment targets execute once. Uninitialized variables
+receive their defaults each time their declaration executes. Integers are signed
+32-bit values with wrapping overflow; double values use IEEE-754 binary64.
+Existing division-by-zero runtime errors and unchecked cast behavior are retained.
+Targets must preserve these semantics or report an unsupported operation.
 
-Additional backends implement `TargetBackend` and are selected through
-`CompilationTarget` and `TargetBackendFactory`. They consume the same frontend
-AST and keep their own preparation data and runtime function implementations.
+`TargetBackend` supplies immutable runtime signatures. Its final `prepare()`
+validates target support before creating a `PreparedProgram`, binding the IR to
+fresh, frozen target layouts. Public phase outcomes use `PhaseResult`: a success
+contains a value; a failure contains error diagnostics. Diagnostics retain their
+phase and source location. Internal invariant failures are reported distinctly.
+
+`PreparedProgram.generate()` creates an immutable `OutputArtifact` entirely in
+memory. `io.ArtifactWriter` publishes it through a temporary file. Analysis or
+generation failures preserve existing output files. `--dump-ir` displays the
+normalized program; `--dump-symboltable` displays prepared target layouts.
+
+FANUC intentionally remains an empty placeholder. Future backends implement
+validation and preparation using the common IR, and are registered through
+`CompilationTarget` and `TargetBackendFactory`.
+
+See [the compiler architecture contract](docs/compiler-architecture.md) for the
+IR model and the steps to add a target.
 
 VM options:
 
@@ -127,6 +130,7 @@ compiler/
   backend/
     vm/
     fanuc/
+  ir/
   source/
   diagnostics/
   io/

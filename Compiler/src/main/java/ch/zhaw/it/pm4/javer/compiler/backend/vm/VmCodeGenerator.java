@@ -1,1179 +1,249 @@
 package ch.zhaw.it.pm4.javer.compiler.backend.vm;
 
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.case_label.CaseLabelAstNode;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.case_label.EnumCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.case_label.LiteralCaseLabel;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.declaration.DeclarationAstNode;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.declaration.EnumDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.declaration.FunctionDeclaration;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.statement.*;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.type.PrimitiveTypeKind;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.symbol.*;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.typeinfo.*;
 import ch.zhaw.it.pm4.javer.compiler.backend.TextCodeGenerator;
+import ch.zhaw.it.pm4.javer.compiler.diagnostics.CompilerInvariantException;
 import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
-
+import ch.zhaw.it.pm4.javer.compiler.ir.Ir;
+import ch.zhaw.it.pm4.javer.compiler.source.SourceRange;
 import java.util.*;
 
-import static ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.statement.BinaryExpressionKind.*;
-
-/**
- * Emits VM bytecode from a semantically checked AST.
- */
-public class VmCodeGenerator extends TextCodeGenerator {
-
-    public static final String JUMPF = "JUMPF, ";
-    public static final String JUMP = "JUMP, ";
-    public static final String JUMPT = "JUMPT, ";
-    public static final String PUSHI = "PUSHI, ";
-    public static final String PUSHI_0 = "PUSHI, 0";
-    public static final String PUSHI_1 = "PUSHI, 1";
-    public static final String NEWA = "NEWA, ";
-    public static final String PUSHR = "PUSHR, ";
-    public static final String LOCAL = "LOCAL, ";
-    public static final String STORE_4 = "STORE4";
-    public static final String DUP = "DUP, ";
-    public static final String PUSHD = "PUSHD, ";
-    public static final String UNEXPECTED_BINARY_OPERATOR = "Unexpected binary operator: ";
-    public static final String UNEXPECTED_CONVERSION_FROM = "Unexpected conversion from ";
-
-    private final Deque<LoopContext> loopContexts = new ArrayDeque<>();
+/** Exhaustive IR-to-VM emission. No parser AST, frontend type rules or mutable symbols. */
+final class VmCodeGenerator extends TextCodeGenerator {
+    private final Ir.Program program;
     private final VmMetadata metadata;
-    private VmDataSection dataSection;
-    private FunctionEntry currentFunction;
-    private int nextLabelId;
+    private final Map<Integer, Ir.Signature> signatures = new HashMap<>();
+    private final Deque<Loop> loops = new ArrayDeque<>();
+    private VmDataSection data;
+    private int currentFunction;
+    private int labelId;
+    private record Loop(String exit, String next) { }
 
-    /**
-     * Creates a code generator that reports invariant failures as diagnostics.
-     */
-    VmCodeGenerator(DiagnosticBag diagnostics, VmMetadata metadata) {
-        super(diagnostics);
-        this.metadata = metadata;
+    VmCodeGenerator(DiagnosticBag diagnostics, Ir.Program program, VmMetadata metadata) {
+        super(diagnostics); this.program = program; this.metadata = metadata;
+        program.signatures().forEach(s -> signatures.put(s.id(), s));
     }
-
-    @Override
-    protected void reset() {
-        loopContexts.clear();
-        nextLabelId = 0;
-    }
-
-    @Override
-    protected void emit(CompilationUnit node) {
-        node.accept(this);
-    }
-
-    @Override
-    protected void cleanup() {
-        dataSection = null;
-        currentFunction = null;
-    }
-
-    private void writeLabel(String label) {
-        writeLine(label + ":");
-    }
-
-    private String nextLabel(String prefix) {
-        return prefix + "_" + nextLabelId++;
-    }
-
-    @Override
-    public void visit(CompilationUnit node) {
-        dataSection = new VmDataSection();
-        writeLine(".code");
-        for (DeclarationAstNode declaration : node.getDeclarations()) {
-            declaration.accept(this);
+    @Override protected void emit() {
+        data = new VmDataSection();
+        data.addEnums(program, metadata);
+        line(".code");
+        for (Ir.Function function : program.functions()) {
+            currentFunction = function.signature().id();
+            line(metadata.function(currentFunction).label() + ":");
+            line("ENTER, " + metadata.function(currentFunction).localBytes());
+            statement(function.body());
+            if (function.signature().returnType().equals(Ir.Type.VOID)) line("RET, 0");
         }
-        writeLine("");
-        writeLine(".data");
-        dataSection.getEntries().values().forEach(entry -> writeLine(entry.toString()));
-        dataSection = null;
+        line(""); line(".data"); data.entries().forEach(e -> line(e.toString()));
     }
-
-    @Override
-    public void visit(EnumDeclaration node) {
-        dataSection.addEnumValues(node.getSymbolEntry(), metadata.enumLayout(node.getSymbolEntry()));
-    }
-
-    @Override
-    public void visit(FunctionDeclaration node) {
-        FunctionEntry function = node.getSymbolEntry();
-        currentFunction = function;
-        VmMetadata.VmFunctionLayout layout = metadata.function(function);
-        writeLine(layout.label() + ":");
-        writeLine("ENTER, " + layout.frameSizeBytes());
-        node.getBody().accept(this);
-        if (!endsWithReturn(node.getBody())) {
-            emitFallthroughReturn(function);
-        }
-        currentFunction = null;
-    }
-
-    private boolean endsWithReturn(BlockStatement body) {
-        List<StatementAstNode> statements = body.getStatements();
-        if (statements.isEmpty()) {
-            return false;
-        }
-        return statements.getLast() instanceof ReturnStatement;
-    }
-
-    private void emitFallthroughReturn(FunctionEntry function) {
-        TypeInfo returnType = function.getReturnType();
-        if (isVoidLike(returnType)) {
-            emitReturn(VoidTypeInfo.INSTANCE);
+    private void statement(Ir.Statement node) {
+        switch (node) {
+            case Ir.Block block -> block.statements().forEach(this::statement);
+            case Ir.Store store -> { expression(store.address()); expression(store.value()); store(store.value().type()); }
+            case Ir.Evaluate evaluation -> { expression(evaluation.expression()); pop(evaluation.expression().type()); }
+            case Ir.Return returning -> {
+                if (returning.value() != null) expression(returning.value());
+                line("RET, " + (returning.value() == null ? 0 : VmLayout.stackBytes(returning.value().type())));
+            }
+            case Ir.If branch -> {
+                String other = label("if_else"), end = label("if_end");
+                expression(branch.condition()); line("JUMPF, " + other);
+                statement(branch.thenBranch()); line("JUMP, " + end);
+                mark(other); statement(branch.elseBranch()); mark(end);
+            }
+            case Ir.While loop -> {
+                String condition = label("while_condition"), end = label("while_end");
+                mark(condition); expression(loop.condition()); line("JUMPF, " + end);
+                loops.push(new Loop(end, condition)); statement(loop.body()); loops.pop();
+                line("JUMP, " + condition); mark(end);
+            }
+            case Ir.DoWhile loop -> {
+                String body = label("do_body"), condition = label("do_condition"), end = label("do_end");
+                mark(body); loops.push(new Loop(end, condition)); statement(loop.body()); loops.pop();
+                mark(condition); expression(loop.condition()); line("JUMPT, " + body); mark(end);
+            }
+            case Ir.For loop -> {
+                String condition = label("for_condition"), update = label("for_update"), end = label("for_end");
+                statement(loop.init()); mark(condition); expression(loop.condition()); line("JUMPF, " + end);
+                loops.push(new Loop(end, update)); statement(loop.body()); loops.pop();
+                mark(update); statement(loop.update()); line("JUMP, " + condition); mark(end);
+            }
+            case Ir.Switch selection -> selection(selection);
+            case Ir.Break exit -> { require(!loops.isEmpty(), exit.source(), "Break without loop"); line("JUMP, " + loops.peek().exit()); }
+            case Ir.Continue next -> { require(!loops.isEmpty(), next.source(), "Continue without loop"); line("JUMP, " + loops.peek().next()); }
         }
     }
-
-    @Override
-    public void visit(BlockStatement node) {
-        for (StatementAstNode statement : node.getStatements()) {
-            emitStatement(statement);
-        }
-    }
-
-    private void emitStatement(StatementAstNode statement) {
-        if (statement instanceof ExpressionAstNode expression) {
-            expression.accept(this);
-            discardExpressionResult(expression);
-            return;
-        }
-        statement.accept(this);
-    }
-
-    private void discardExpressionResult(ExpressionAstNode expression) {
-        TypeInfo type = expression.getResultingType();
-        if (!leavesValueOnStack(expression, type)) {
-            return;
-        }
-        emitPop(type);
-    }
-
-    private boolean leavesValueOnStack(ExpressionAstNode expression, TypeInfo type) {
-        if (isVoidLike(type)) {
-            return false;
-        }
-        return !(expression instanceof CallExpression call) || !isVoidReturningCall(call);
-    }
-
-    private boolean isVoidReturningCall(CallExpression call) {
-        FunctionEntry function = call.getResolvedFunction();
-        return isVoidLike(function.getReturnType());
-    }
-
-    @Override
-    public void visit(IfStatement node) {
-        String elseLabel = nextLabel("if_else");
-        String endLabel = nextLabel("if_end");
-        emitAsBoolean(node.getCondition());
-        writeLine(JUMPF + elseLabel);
-        node.getThenBranch().accept(this);
-        boolean elseBranchPossible = node.getElseBranch() != null;
-        if (elseBranchPossible) {
-            writeLine(JUMP + endLabel);
-        }
-        writeLabel(elseLabel);
-        if (elseBranchPossible) {
-            node.getElseBranch().accept(this);
-            writeLabel(endLabel);
-        }
-    }
-
-    @Override
-    public void visit(WhileStatement node) {
-        String conditionLabel = nextLabel("while_condition");
-        String endLabel = nextLabel("while_end");
-        writeLabel(conditionLabel);
-        emitAsBoolean(node.getCondition());
-        writeLine(JUMPF + endLabel);
-        loopContexts.push(new LoopContext(endLabel, conditionLabel));
-        node.getBody().accept(this);
-        loopContexts.pop();
-        writeLine(JUMP + conditionLabel);
-        writeLabel(endLabel);
-    }
-
-    @Override
-    public void visit(DoWhileStatement node) {
-        String bodyLabel = nextLabel("do_body");
-        String conditionLabel = nextLabel("do_condition");
-        String endLabel = nextLabel("do_end");
-        writeLabel(bodyLabel);
-        loopContexts.push(new LoopContext(endLabel, conditionLabel));
-        node.getBody().accept(this);
-        loopContexts.pop();
-        writeLabel(conditionLabel);
-        emitAsBoolean(node.getCondition());
-        writeLine(JUMPT + bodyLabel);
-        writeLabel(endLabel);
-    }
-
-    @Override
-    public void visit(ForStatement node) {
-        String conditionLabel = nextLabel("for_condition");
-        String updateLabel = nextLabel("for_update");
-        String endLabel = nextLabel("for_end");
-        if (node.getForInit() != null) {
-            node.getForInit().accept(this);
-        }
-        writeLabel(conditionLabel);
-        if (node.getCondition() != null) {
-            emitAsBoolean(node.getCondition());
-        } else {
-            writeLine(PUSHI_1);
-        }
-        writeLine(JUMPF + endLabel);
-        loopContexts.push(new LoopContext(endLabel, updateLabel));
-        node.getBody().accept(this);
-        loopContexts.pop();
-        writeLabel(updateLabel);
-        if (node.getUpdate() != null) {
-            for (ExpressionAstNode update : node.getUpdate()) {
-                emitStatement(update);
+    private void selection(Ir.Switch selection) {
+        String end = label("switch_end"), noMatch = label("switch_no_match");
+        List<String> targets = selection.cases().stream().map(c -> label("switch_case")).toList();
+        String fallback = noMatch;
+        expression(selection.condition());
+        for (int i = 0; i < selection.cases().size(); i++) {
+            Ir.Case branch = selection.cases().get(i);
+            if (branch.isDefault()) { fallback = targets.get(i); continue; }
+            for (Ir.Expression value : branch.labels()) {
+                dup(selection.condition().type());
+                expression(value);
+                binary(Ir.BinaryOp.EQUALS, selection.condition().type()); line("JUMPT, " + targets.get(i));
             }
         }
-        writeLine(JUMP + conditionLabel);
-        writeLabel(endLabel);
+        line("JUMP, " + fallback);
+        for (int i = 0; i < selection.cases().size(); i++) {
+            mark(targets.get(i)); pop(selection.condition().type()); statement(selection.cases().get(i).body()); line("JUMP, " + end);
+        }
+        if (fallback.equals(noMatch)) { mark(noMatch); pop(selection.condition().type()); }
+        mark(end);
     }
-
-    @Override
-    public void visit(SwitchStatement node) {
-        String endLabel = nextLabel("switch_end");
-        boolean hasDefault = node.getCases().stream().anyMatch(SwitchCase::isDefault);
-        String defaultLabel = hasDefault ? nextLabel("switch_default") : nextLabel("switch_no_match");
-        TypeInfo switchType = node.getCondition().getResultingType();
-
-        node.getCondition().accept(this);
-
-        List<SwitchTarget> targets = new ArrayList<>();
-        for (SwitchCase switchCase : node.getCases()) {
-            String caseLabel = switchCase.isDefault() ? defaultLabel : nextLabel("switch_case");
-            targets.add(new SwitchTarget(switchCase, caseLabel));
-            if (!switchCase.isDefault()) {
-                for (CaseLabelAstNode label : switchCase.getCaseLabels()) {
-                    emitSwitchComparison(switchType, label);
-                    writeLine(JUMPT + caseLabel);
+    private void expression(Ir.Expression node) {
+        switch (node) {
+            case Ir.Literal literal -> literal(literal);
+            case Ir.LocalAddress local -> {
+                VmMetadata.StorageLayout layout = metadata.storage(local.storageId());
+                line("LOCAL, " + (layout.offsetBytes() + (layout.parameter() ? metadata.function(currentFunction).localBytes() : 0)));
+            }
+            case Ir.Load load -> { expression(load.address()); line(VmLayout.memoryWidth(load.type()).loadInstruction()); }
+            case Ir.IndexAddress index -> {
+                expression(index.target()); expression(index.index());
+                int width = VmLayout.memoryWidth(index.type().element()).bytes();
+                line("BOUNDS, " + width); scale(width); line("PUSHI, " + VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES); line("IADD"); line("IADD");
+            }
+            case Ir.FieldAddress field -> {
+                expression(field.target()); int offset = metadata.storage(field.fieldId()).offsetBytes();
+                if (offset != 0) { line("PUSHI, " + offset); line("IADD"); }
+            }
+            case Ir.EnumConstant constant -> {
+                line("PUSHR, " + metadata.enumLabel(constant.enumId())); int offset = metadata.enumOffset(constant.valueId());
+                if (offset != 0) { line("PUSHI, " + offset); line("IADD"); }
+            }
+            case Ir.Binary operation -> {
+                expression(operation.left()); expression(operation.right()); binary(operation.op(), operation.left().type());
+            }
+            case Ir.Unary operation -> {
+                expression(operation.operand());
+                switch (operation.op()) {
+                    case NEGATE -> line(operation.type().equals(Ir.Type.DOUBLE) ? "DNEG" : "INEG");
+                    case BITWISE_NOT -> line("IINV");
+                    case LOGICAL_NOT -> { line("PUSHI, 0"); line("IEQ"); }
                 }
             }
-        }
-
-        writeLine(JUMP + defaultLabel);
-        for (SwitchTarget target : targets) {
-            writeLabel(target.label());
-            emitPop(switchType);
-            target.switchCase().getStatement().accept(this);
-            writeLine(JUMP + endLabel);
-        }
-        if (!hasDefault) {
-            writeLabel(defaultLabel);
-            emitPop(switchType);
-            writeLine(JUMP + endLabel);
-        }
-        writeLabel(endLabel);
-    }
-
-    private void emitSwitchComparison(TypeInfo switchType, CaseLabelAstNode label) {
-        emitDup(switchType);
-        emitCaseLabelValue(label);
-        emitEqualityCompare(switchType, caseLabelType(label));
-    }
-
-    private void emitCaseLabelValue(CaseLabelAstNode label) {
-        if (label instanceof LiteralCaseLabel literalCaseLabel) {
-            emitLiteralPush(literalCaseLabel.getLiteral());
-            return;
-        }
-        emitEnumValue(((EnumCaseLabel) label).getResolvedEnumValue());
-    }
-
-    private TypeInfo caseLabelType(CaseLabelAstNode label) {
-        if (label instanceof LiteralCaseLabel literalCaseLabel) {
-            return literalCaseLabel.getLiteral().getResultingType();
-        }
-        return new EnumTypeInfo(((EnumCaseLabel) label).getResolvedEnumValue().getOwnerEnum());
-    }
-
-    @Override
-    public void visit(BreakStatement node) {
-        assert loopContexts.peek() != null;
-        writeLine(JUMP + loopContexts.peek().breakLabel());
-    }
-
-    @Override
-    public void visit(ContinueStatement node) {
-        assert loopContexts.peek() != null;
-        writeLine(JUMP + loopContexts.peek().continueLabel());
-    }
-
-    @Override
-    public void visit(ReturnStatement node) {
-        ExpressionAstNode expression = node.getExpression();
-        TypeInfo returnType = currentFunction.getReturnType();
-        if (expression == null) {
-            emitReturn(VoidTypeInfo.INSTANCE);
-            return;
-        }
-        emitTyped(expression, returnType);
-        emitReturn(returnType);
-    }
-
-    @Override
-    public void visit(VarDeclarationStatement node) {
-        StorageEntry storage = node.getSymbolEntry();
-        if (node.getInitializer() == null) {
-            emitDefaultInitialization(storage);
-            return;
-        }
-        emitStorageAddress(storage);
-        emitTyped(node.getInitializer(), storage.getType());
-        emitStore(storage.getType());
-    }
-
-    private void emitDefaultInitialization(StorageEntry storage) {
-        Object defaultValue = storage instanceof VariableEntry variable
-                ? variable.getDefaultValue()
-                : TypeRules.defaultValue(storage.getType());
-        if (isZeroDefault(defaultValue)) {
-            return;
-        }
-        emitStorageAddress(storage);
-        emitDefaultValue(storage.getType(), defaultValue);
-        emitStore(storage.getType());
-    }
-
-    private boolean isZeroDefault(Object value) {
-        return value == null
-                || Boolean.FALSE.equals(value)
-                || Character.valueOf('\0').equals(value)
-                || Integer.valueOf(0).equals(value)
-                || Double.valueOf(0.0).equals(value);
-    }
-
-    @Override
-    public void visit(AssignExpression node) {
-        TypeInfo type = node.getTarget().getResultingType();
-        AssignOperator operator = node.getOperator();
-        if (operator == AssignOperator.ASSIGN) {
-            emitAddress(node.getTarget());
-            emitDup(PrimitiveTypeInfo.INT);
-            emitTyped(node.getValue(), type);
-        } else {
-            TypeInfo valueType = node.getValue().getResultingType();
-            TypeInfo calculationType = TypeRules.compoundCalculationType(operator, type, valueType);
-            emitAddress(node.getTarget());
-            emitDup(PrimitiveTypeInfo.INT);
-            emitDup(PrimitiveTypeInfo.INT);
-            emitLoad(type);
-            emitConversion(type, calculationType);
-            emitTyped(node.getValue(), calculationType);
-            BinaryExpressionKind binaryOperator = compoundAssignToBinary(node);
-            emitBinaryOp(binaryOperator, calculationType);
-            emitConversion(calculationType, type);
-        }
-        emitStore(type);
-        emitLoad(type);
-    }
-
-    private BinaryExpressionKind compoundAssignToBinary(AssignExpression node) {
-        return switch (node.getOperator()) {
-            case ADD_ASSIGN -> BinaryExpressionKind.ADD;
-            case SUB_ASSIGN -> BinaryExpressionKind.SUBTRACT;
-            case MUL_ASSIGN -> BinaryExpressionKind.MULTIPLY;
-            case DIV_ASSIGN -> BinaryExpressionKind.DIVIDE;
-            case MOD_ASSIGN -> MODULO;
-            case BITWISE_OR_ASSIGN -> BinaryExpressionKind.BITWISE_OR;
-            case BITWISE_AND_ASSIGN -> BITWISE_AND;
-            case BITWISE_XOR_ASSIGN -> BinaryExpressionKind.BITWISE_XOR;
-            case LEFT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_LEFT;
-            case RIGHT_SHIFT_ASSIGN -> BinaryExpressionKind.SHIFT_RIGHT;
-            case ASSIGN, INVALID -> {
-                throw new IllegalStateException("Unexpected compound assignment operator: " + node.getOperator());
+            case Ir.Convert conversion -> conversion(conversion);
+            case Ir.Conditional branch -> {
+                String other = label("conditional_false"), end = label("conditional_end");
+                expression(branch.condition()); line("JUMPF, " + other); expression(branch.whenTrue()); line("JUMP, " + end);
+                mark(other); expression(branch.whenFalse()); mark(end);
             }
-        };
-    }
-
-    @Override
-    public void visit(ConditionalExpression node) {
-        String falseLabel = nextLabel("cond_false");
-        String endLabel = nextLabel("cond_end");
-        TypeInfo resultType = node.getResultingType();
-        emitAsBoolean(node.getCondition());
-        writeLine(JUMPF + falseLabel);
-        emitTyped(node.getTrueExpression(), resultType);
-        writeLine(JUMP + endLabel);
-        writeLabel(falseLabel);
-        emitTyped(node.getFalseExpression(), resultType);
-        writeLabel(endLabel);
-    }
-
-    @Override
-    public void visit(BinaryExpression node) {
-        BinaryExpressionKind operator = node.getOperator();
-        TypeInfo operandType = binaryOperandType(operator, node);
-        if (isLogical(operator)) {
-            emitBinaryOp(node, operandType);
-            return;
-        }
-        if (isStringEquality(node)) {
-            node.getLeft().accept(this);
-            node.getRight().accept(this);
-            writeLine(operator == BinaryExpressionKind.EQUALS ? "STREQ" : "STRNE");
-            return;
-        }
-        emitTyped(node.getLeft(), operandType);
-        emitTyped(node.getRight(), operandType);
-        emitBinaryOp(operator, operandType);
-        emitConversion(binaryResultType(operator, operandType), node.getResultingType());
-    }
-
-    private TypeInfo binaryOperandType(BinaryExpressionKind operator, BinaryExpression node) {
-        if (isLogical(operator)) {
-            return PrimitiveTypeInfo.BOOL;
-        }
-        if (isIntegerOnlyBinary(operator)) {
-            return PrimitiveTypeInfo.INT;
-        }
-        if (operator == BinaryExpressionKind.EQUALS || operator == BinaryExpressionKind.NOT_EQUALS) {
-            return TypeRules.equalityOperandType(node.getLeft().getResultingType(), node.getRight().getResultingType());
-        }
-        TypeInfo left = node.getLeft().getResultingType();
-        TypeInfo right = node.getRight().getResultingType();
-        if (isComparison(operator) && PrimitiveTypeInfo.CHAR.equals(left) && PrimitiveTypeInfo.CHAR.equals(right)) {
-            return PrimitiveTypeInfo.CHAR;
-        }
-        if (PrimitiveTypeInfo.DOUBLE.equals(left) || PrimitiveTypeInfo.DOUBLE.equals(right)) {
-            return PrimitiveTypeInfo.DOUBLE;
-        }
-        return PrimitiveTypeInfo.INT;
-    }
-
-    private TypeInfo binaryResultType(BinaryExpressionKind operator, TypeInfo operandType) {
-        if (isLogical(operator) || isComparison(operator)) {
-            return PrimitiveTypeInfo.BOOL;
-        }
-        return operandType;
-    }
-
-    private boolean isStringEquality(BinaryExpression node) {
-        BinaryExpressionKind operator = node.getOperator();
-        if (operator != BinaryExpressionKind.EQUALS && operator != BinaryExpressionKind.NOT_EQUALS) {
-            return false;
-        }
-        TypeInfo left = node.getLeft().getResultingType();
-        TypeInfo right = node.getRight().getResultingType();
-        return PrimitiveTypeInfo.STRING.equals(left) || PrimitiveTypeInfo.STRING.equals(right);
-    }
-
-    private boolean isLogical(BinaryExpressionKind operator) {
-        return switch (operator) {
-            case AND, OR -> true;
-            case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO,
-                 BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
-                 EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS -> false;
-            case INVALID -> {
-                throw new IllegalStateException(UNEXPECTED_BINARY_OPERATOR + operator);
-            }
-        };
-    }
-
-    private boolean isIntegerOnlyBinary(BinaryExpressionKind operator) {
-        return isAmong(operator, MODULO, BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT);
-    }
-
-    private boolean isComparison(BinaryExpressionKind operator) {
-        return isAmong(operator, EQUALS, NOT_EQUALS, LESS, LESS_EQUALS, GREATER, GREATER_EQUALS);
-    }
-
-    private boolean isAmong(
-            BinaryExpressionKind operator,
-            BinaryExpressionKind... kinds) {
-
-        return EnumSet.copyOf(Arrays.asList(kinds))
-                .contains(operator);
-    }
-
-    private void emitLogicalAnd(BinaryExpression node) {
-        String falseLabel = nextLabel("and_false");
-        String endLabel = nextLabel("and_end");
-        emitAsBoolean(node.getLeft());
-        writeLine(JUMPF + falseLabel);
-        emitAsBoolean(node.getRight());
-        writeLine(JUMP + endLabel);
-        writeLabel(falseLabel);
-        writeLine(PUSHI_0);
-        writeLabel(endLabel);
-    }
-
-    private void emitLogicalOr(BinaryExpression node) {
-        String trueLabel = nextLabel("or_true");
-        String endLabel = nextLabel("or_end");
-        emitAsBoolean(node.getLeft());
-        writeLine(JUMPT + trueLabel);
-        emitAsBoolean(node.getRight());
-        writeLine(JUMP + endLabel);
-        writeLabel(trueLabel);
-        writeLine(PUSHI_1);
-        writeLabel(endLabel);
-    }
-
-    @Override
-    public void visit(CastExpression node) {
-        node.getOperand().accept(this);
-        emitUncheckedCast(node.getOperand().getResultingType(), node.getResultingType());
-    }
-
-    @Override
-    public void visit(UnaryExpression node) {
-        switch (node.getKind()) {
-            case PLUS -> node.getOperand().accept(this);
-            case MINUS -> {
-                node.getOperand().accept(this);
-                TypeInfo type = node.getOperand().getResultingType();
-                writeLine(PrimitiveTypeInfo.DOUBLE.equals(type) ? "DNEG" : "INEG");
-            }
-            case BITWISE_NOT -> {
-                node.getOperand().accept(this);
-                writeLine("IINV");
-            }
-            case LOGICAL_NOT -> {
-                emitAsBoolean(node.getOperand());
-                String falseLabel = nextLabel("not_false");
-                String endLabel = nextLabel("not_end");
-                writeLine(JUMPF + falseLabel);
-                writeLine(PUSHI_0);
-                writeLine(JUMP + endLabel);
-                writeLabel(falseLabel);
-                writeLine(PUSHI_1);
-                writeLabel(endLabel);
-            }
-            case PRE_INCREMENT -> emitPrefixStep(node.getOperand(), 1);
-            case PRE_DECREMENT -> emitPrefixStep(node.getOperand(), -1);
-            case INVALID -> {
-                throw new IllegalStateException("Unexpected unary operator: " + node.getKind());
-            }
-        }
-    }
-
-    private void emitPrefixStep(ExpressionAstNode target, int delta) {
-        TypeInfo type = target.getResultingType();
-        emitAddress(target);
-        emitAddress(target);
-        emitLoad(type);
-        emitNumericLiteralPush(type, delta);
-        emitBinaryOp(BinaryExpressionKind.ADD, type);
-        emitStore(type);
-        emitAddress(target);
-        emitLoad(type);
-    }
-
-    @Override
-    public void visit(PostfixExpression node) {
-        ExpressionAstNode target = node.getOperand();
-        int delta = switch (node.getKind()) {
-            case INCREMENT -> 1;
-            case DECREMENT -> -1;
-            case INVALID -> {
-                throw new IllegalStateException("Unexpected postfix operator: " + node.getKind());
-            }
-        };
-        TypeInfo type = target.getResultingType();
-        emitAddress(target);
-        emitLoad(type);
-        emitAddress(target);
-        emitAddress(target);
-        emitLoad(type);
-        emitNumericLiteralPush(type, delta);
-        emitBinaryOp(BinaryExpressionKind.ADD, type);
-        emitStore(type);
-    }
-
-    @Override
-    public void visit(CallExpression node) {
-        FunctionEntry function = node.getResolvedFunction();
-        if (function.isBuiltIn()) {
-            emitPrintBuiltin(node);
-            return;
-        }
-        List<ParameterEntry> parameters = new ArrayList<>(function.getScope().getParameters().values());
-        if (function.isVariadic()) {
-            emitVariadicArguments(node, parameters, function.getVariadicParameter());
-        } else {
-            emitFixedArguments(node, parameters);
-        }
-        VmMetadata.VmFunctionLayout layout = metadata.function(function);
-        writeLine("CALL, " + layout.label() + ", " + layout.parameterBytes());
-    }
-
-    private void emitFixedArguments(CallExpression node, List<ParameterEntry> parameters) {
-        for (int i = 0; i < node.getArguments().size(); i++) {
-            emitTyped(node.getArguments().get(i), parameters.get(i).getType());
-        }
-    }
-
-    private void emitVariadicArguments(
-            CallExpression node,
-            List<ParameterEntry> parameters,
-            ParameterEntry variadicParameter) {
-        int fixedCount = parameters.size() - 1;
-        for (int i = 0; i < fixedCount; i++) {
-            emitTyped(node.getArguments().get(i), parameters.get(i).getType());
-        }
-
-        if (isVariadicArrayPassThrough(node, fixedCount, variadicParameter)) {
-            emitTyped(node.getArguments().get(fixedCount), variadicParameter.getType());
-            return;
-        }
-
-        emitVariadicArray(node.getArguments(), fixedCount, variadicParameter.getVariadicElementType());
-    }
-
-    private boolean isVariadicArrayPassThrough(
-            CallExpression node,
-            int fixedCount,
-            ParameterEntry variadicParameter) {
-        return node.getArguments().size() == fixedCount + 1
-                && TypeRules.isAssignable(
-                variadicParameter.getType(),
-                node.getArguments().get(fixedCount).getResultingType());
-    }
-
-    private void emitVariadicArray(List<ExpressionAstNode> arguments, int firstVariadicIndex, TypeInfo elementType) {
-        int elementSize = memoryBytes(elementType);
-        int length = arguments.size() - firstVariadicIndex;
-        writeLine(PUSHI + length);
-        writeLine(NEWA + elementSize);
-
-        for (int i = 0; i < length; i++) {
-            emitDup(PrimitiveTypeInfo.INT);
-            writeLine(PUSHI + (VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES + i * elementSize));
-            writeLine("IADD");
-            emitTyped(arguments.get(firstVariadicIndex + i), elementType);
-            emitStore(elementType);
-        }
-    }
-
-    @Override
-    public void visit(IndexExpression node) {
-        emitAddress(node);
-        emitLoad(node.getResultingType());
-    }
-
-    @Override
-    public void visit(MemberAccessExpression node) {
-        if (node.getResolvedEnumValue() != null) {
-            emitEnumValue(node.getResolvedEnumValue());
-            return;
-        }
-        if (isLengthAccess(node)) {
-            node.getTarget().accept(this);
-            writeLine("LOAD4");
-            return;
-        }
-        emitAddress(node);
-        emitLoad(node.getResolvedField().getType());
-    }
-
-    @Override
-    public void visit(NewExpression node) {
-        if (node.getResultingType() instanceof StructTypeInfo(
-                StructEntry entry
-        )) {
-            int sizeBytes = metadata.struct(entry).sizeBytes();
-            writeLine(PUSHI + sizeBytes);
-            writeLine("NEW");
-            return;
-        }
-        ArrayTypeInfo arrayType = (ArrayTypeInfo) node.getResultingType();
-        TypeInfo elementType = arrayType.elementType();
-        ArrayInitExpression init = node.getArrayInit();
-
-        if (init == null && node.getDimensions().size() > 1) {
-            emitJaggedArrayAllocation(node, TypeRules.leafElementType(node.getResultingType()));
-            return;
-        }
-
-        int elementSize = memoryBytes(elementType);
-        emitArrayAllocation(node.getDimensions(), init, elementSize);
-
-        if (init != null) {
-            VmDataEntry template = dataSection.addArrayTemplate(elementType, arrayTemplateValues(init.getElements(), elementType));
-            emitDup(PrimitiveTypeInfo.INT);
-            emitArrayPayloadOffset();
-            writeLine(PUSHR + template.getLabel());
-            writeLine(PUSHI + (init.getElements().size() * elementSize));
-            writeLine("MEMCPY");
-            initializeArrayElements(init.getElements(), elementType, elementSize);
-        }
-    }
-
-    @Override
-    public void visit(ArrayInitExpression node) {
-        ArrayTypeInfo arrayType = (ArrayTypeInfo) node.getResultingType();
-        TypeInfo elementType = arrayType.elementType();
-        int elementSize = memoryBytes(elementType);
-        VmDataEntry template = dataSection.addArrayTemplate(elementType, arrayTemplateValues(node.getElements(), elementType));
-        writeLine(PUSHI + node.getElements().size());
-        writeLine(NEWA + elementSize);
-        emitDup(PrimitiveTypeInfo.INT);
-        emitArrayPayloadOffset();
-        writeLine(PUSHR + template.getLabel());
-        writeLine(PUSHI + (node.getElements().size() * elementSize));
-        writeLine("MEMCPY");
-        initializeArrayElements(node.getElements(), elementType, elementSize);
-    }
-
-    private void initializeArrayElements(List<ExpressionAstNode> elements, TypeInfo elementType, int elementSize) {
-        for (int i = 0; i < elements.size(); i++) {
-            if (staticArrayTemplateValue(elements.get(i), elementType).isPresent()) {
-                continue;
-            }
-            emitDup(PrimitiveTypeInfo.INT);
-            writeLine(PUSHI + (VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES + i * elementSize));
-            writeLine("IADD");
-            emitTyped(elements.get(i), elementType);
-            emitStore(elementType);
-        }
-    }
-
-    private void emitArrayAllocation(List<ExpressionAstNode> dimensions, ArrayInitExpression init, int elementSize) {
-        if (dimensions.isEmpty()) {
-            writeLine(PUSHI + init.getElements().size());
-            writeLine(NEWA + elementSize);
-            return;
-        }
-
-        emitTyped(dimensions.getFirst(), PrimitiveTypeInfo.INT);
-        writeLine(NEWA + elementSize);
-    }
-
-    private void emitJaggedArrayAllocation(NewExpression node, TypeInfo leafType) {
-        VmMetadata.JaggedArrayTempLayout temps = metadata.arrayTemps(node);
-        if (temps == null) {
-            throw new IllegalStateException("Missing temporary storage for jagged array allocation.");
-        }
-
-        List<ExpressionAstNode> dimensions = node.getDimensions();
-        for (int i = 0; i < dimensions.size(); i++) {
-            writeLine(LOCAL + temps.dimensionOffsets()[i]);
-            emitTyped(dimensions.get(i), PrimitiveTypeInfo.INT);
-            writeLine(STORE_4);
-        }
-        emitJaggedArrayLevel(0, dimensions.size(), leafType, temps);
-    }
-
-    private void emitJaggedArrayLevel(
-            int depth,
-            int dimensionCount,
-            TypeInfo leafType,
-            VmMetadata.JaggedArrayTempLayout temps) {
-        int elementSize = depth + 1 == dimensionCount ? memoryBytes(leafType) : VmLayout.WORD_BYTES;
-        if (depth + 1 == dimensionCount) {
-            emitLoadTemp(temps.dimensionOffsets()[depth]);
-            writeLine(NEWA + elementSize);
-            return;
-        }
-
-        int baseOffset = temps.baseOffsets()[depth];
-        int indexOffset = temps.indexOffsets()[depth];
-        String loopLabel = nextLabel("jagged_alloc_loop");
-        String endLabel = nextLabel("jagged_alloc_end");
-
-        writeLine(LOCAL + baseOffset);
-        emitLoadTemp(temps.dimensionOffsets()[depth]);
-        writeLine(NEWA + elementSize);
-        writeLine(STORE_4);
-
-        writeLine(LOCAL + indexOffset);
-        writeLine(PUSHI_0);
-        writeLine(STORE_4);
-
-        writeLabel(loopLabel);
-        emitLoadTemp(indexOffset);
-        emitLoadTemp(temps.dimensionOffsets()[depth]);
-        writeLine("ILT");
-        writeLine(JUMPF + endLabel);
-
-        emitLoadTemp(baseOffset);
-        emitLoadTemp(indexOffset);
-        emitScaleTopBy();
-        emitArrayPayloadOffset();
-        writeLine("IADD");
-        emitJaggedArrayLevel(depth + 1, dimensionCount, leafType, temps);
-        writeLine(STORE_4);
-
-        writeLine(LOCAL + indexOffset);
-        emitLoadTemp(indexOffset);
-        writeLine(PUSHI_1);
-        writeLine("IADD");
-        writeLine(STORE_4);
-        writeLine(JUMP + loopLabel);
-
-        writeLabel(endLabel);
-        emitLoadTemp(baseOffset);
-    }
-
-    private void emitLoadTemp(int offset) {
-        writeLine(LOCAL + offset);
-        writeLine("LOAD4");
-    }
-
-    private void emitScaleTopBy() {
-        writeLine(PUSHI + VmLayout.WORD_BYTES);
-        writeLine("IMUL");
-    }
-
-    private void emitArrayPayloadOffset() {
-        writeLine(PUSHI + VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES);
-        writeLine("IADD");
-    }
-
-    private List<Object> arrayTemplateValues(List<ExpressionAstNode> elements, TypeInfo elementType) {
-        return elements.stream()
-                .map(element -> staticArrayTemplateValue(element, elementType).orElse(TypeRules.defaultValue(elementType)))
-                .toList();
-    }
-
-    private Optional<Object> staticArrayTemplateValue(ExpressionAstNode expression, TypeInfo elementType) {
-        if (expression instanceof LiteralExpression<?> literal && literal.getResultingType().equals(elementType) && isPrimitiveTemplateValue(literal)) {
-            return Optional.ofNullable(literal.getValue());
-        }
-        return Optional.empty();
-    }
-
-    private boolean isPrimitiveTemplateValue(LiteralExpression<?> literal) {
-        return switch (literal.getKind()) {
-            case INT, DOUBLE, BOOLEAN, CHAR -> true;
-            case STRING, NULL -> false;
-        };
-    }
-
-    @Override
-    public void visit(NameExpression node) {
-        SymbolEntry entry = node.getSymbolEntry();
-        if (entry instanceof EnumValueEntry enumValue) {
-            emitEnumValue(enumValue);
-            return;
-        }
-        emitFrameLoad((StorageEntry) entry);
-    }
-
-    private void emitEnumValue(EnumValueEntry enumValue) {
-        VmMetadata.VmEnumValueLayout layout = metadata.enumValue(enumValue);
-        writeLine(PUSHR + layout.dataLabel());
-        if (layout.offsetBytes() != 0) {
-            writeLine(PUSHI + layout.offsetBytes());
-            writeLine("IADD");
-        }
-    }
-
-    @Override
-    public void visit(LiteralExpression<?> node) {
-        emitLiteralPush(node);
-    }
-
-    @Override
-    public void visit(ForInitExpressionList node) {
-        for (ExpressionAstNode expression : node.getExpressions()) {
-            emitStatement(expression);
-        }
-    }
-
-    private void emitPrintBuiltin(CallExpression node) {
-        FunctionEntry function = node.getResolvedFunction();
-        VmBuiltInFunction builtIn = VmBuiltInFunction.find(function.getName());
-        assert builtIn != null;
-        emitTyped(node.getArguments().getFirst(), builtIn.parameterType());
-        writeLine(builtIn.instruction());
-    }
-
-    private void emitTyped(ExpressionAstNode expression, TypeInfo expectedType) {
-        expression.accept(this);
-        emitConversion(expression.getResultingType(), expectedType);
-    }
-
-    private void emitConversion(TypeInfo from, TypeInfo to) {
-        if (!TypeRules.needsConversion(from, to)) {
-            return;
-        }
-        PrimitiveTypeKind kind = ((PrimitiveTypeInfo) from).kind();
-        PrimitiveTypeKind kind1 = ((PrimitiveTypeInfo) to).kind();
-        if (kind == kind1) {
-            return;
-        }
-        switch (kind) {
-            case INT -> {
-                if (kind1 == PrimitiveTypeKind.DOUBLE) {
-                    writeLine("I2D");
+            case Ir.Call call -> {
+                Ir.Signature signature = signatures.get(call.functionId());
+                call.arguments().forEach(this::expression);
+                if (signature.builtIn()) {
+                    VmBuiltInFunction function = VmBuiltInFunction.find(signature.name());
+                    require(function != null, call.source(), "Unknown VM runtime function " + signature.name());
+                    line(function.instruction());
                 } else {
-                    throw new IllegalStateException(UNEXPECTED_CONVERSION_FROM + from + " to " + to);
+                    VmMetadata.FunctionLayout function = metadata.function(call.functionId());
+                    line("CALL, " + function.label() + ", " + function.parameterBytes());
                 }
             }
-            case DOUBLE -> {
-                if (kind1 == PrimitiveTypeKind.INT) {
-                    writeLine("D2I");
-                } else {
-                    throw new IllegalStateException(UNEXPECTED_CONVERSION_FROM + from + " to " + to);
-                }
+            case Ir.ArrayNew array -> array(array);
+            case Ir.StructNew allocation -> { line("PUSHI, " + metadata.structBytes(allocation.structId())); line("NEW"); }
+            case Ir.Length length -> { expression(length.target()); line("LOAD4"); }
+            case Ir.Sequence sequence -> { statement(sequence.effects()); expression(sequence.value()); }
+        }
+    }
+    private void array(Ir.ArrayNew array) {
+        VmMetadata.ArrayTemps temps = metadata.array(array);
+        for (int i = 0; i < array.dimensions().size(); i++) {
+            line("LOCAL, " + temps.dimensions().get(i)); expression(array.dimensions().get(i)); line("STORE4");
+        }
+        if (!array.initialized() && array.dimensions().size() > 1) { jagged(array, 0, array.type()); return; }
+        Ir.Type element = array.type().element(); int width = VmLayout.memoryWidth(element).bytes();
+        if (array.dimensions().isEmpty()) line("PUSHI, " + array.elements().size()); else temp(temps.dimensions().getFirst());
+        line("NEWA, " + width);
+        Optional<VmDataEntry> template = data.arrayTemplate(array);
+        if (template.isPresent()) {
+            dup(Ir.Type.INT); line("PUSHI, " + VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES); line("IADD");
+            line("PUSHR, " + template.orElseThrow().label());
+            line("PUSHI, " + Math.multiplyExact(array.elements().size(), width)); line("MEMCPY");
+            return;
+        }
+        for (int i = 0; i < array.elements().size(); i++) {
+            dup(Ir.Type.INT); line("PUSHI, " + i); line("BOUNDS, " + width);
+            scale(width); line("PUSHI, " + VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES); line("IADD"); line("IADD");
+            expression(array.elements().get(i)); store(element);
+        }
+    }
+    private void jagged(Ir.ArrayNew array, int depth, Ir.Type arrayType) {
+        VmMetadata.ArrayTemps temps = metadata.array(array);
+        int width = VmLayout.memoryWidth(arrayType.element()).bytes();
+        if (depth == array.dimensions().size() - 1) { temp(temps.dimensions().get(depth)); line("NEWA, " + width); return; }
+        int base = temps.bases().get(depth), index = temps.indices().get(depth);
+        line("LOCAL, " + base); temp(temps.dimensions().get(depth)); line("NEWA, " + width); line("STORE4");
+        line("LOCAL, " + index); line("PUSHI, 0"); line("STORE4");
+        String loop = label("array_loop"), end = label("array_end");
+        mark(loop); temp(index); temp(temps.dimensions().get(depth)); line("ILT"); line("JUMPF, " + end);
+        temp(base); temp(index); scale(width); line("PUSHI, " + VmLayout.ARRAY_PAYLOAD_OFFSET_BYTES); line("IADD"); line("IADD");
+        jagged(array, depth + 1, arrayType.element()); store(arrayType.element());
+        line("LOCAL, " + index); temp(index); line("PUSHI, 1"); line("IADD"); line("STORE4"); line("JUMP, " + loop);
+        mark(end); temp(base);
+    }
+    private void conversion(Ir.Convert conversion) {
+        expression(conversion.operand());
+        Ir.Type from = conversion.operand().type(), to = conversion.type();
+        switch (conversion.conversion()) {
+            case NUMERIC -> numericConversion(from, to);
+            case REFERENCE -> { }
+            case CAST -> {
+                if (from.equals(Ir.Type.VOID)) defaultValue(to);
+                else if (VmLayout.stackBytes(from) != VmLayout.stackBytes(to)) line(from.equals(Ir.Type.DOUBLE) ? "D2I" : "I2D");
             }
-            default -> {
-                throw new IllegalStateException(UNEXPECTED_CONVERSION_FROM + from + " to " + to);
-            }
-        }
-    }
-
-    private void emitUncheckedCast(TypeInfo from, TypeInfo to) {
-        if (from instanceof VoidTypeInfo) {
-            emitDefaultValue(to, TypeRules.defaultValue(to));
-            return;
-        }
-
-        int sourceBytes = stackBytes(from);
-        int targetBytes = stackBytes(to);
-        if (sourceBytes == targetBytes) {
-            return;
-        }
-        if (sourceBytes == VmLayout.WORD_BYTES && targetBytes == VmLayout.DOUBLE_BYTES) {
-            writeLine("I2D");
-            return;
-        }
-        if (sourceBytes == VmLayout.DOUBLE_BYTES && targetBytes == VmLayout.WORD_BYTES) {
-            writeLine("D2I");
-            return;
-        }
-        throw new IllegalStateException("Unexpected unchecked cast from " + from + " to " + to);
-    }
-
-    private void emitAsBoolean(ExpressionAstNode expression) {
-        expression.accept(this);
-        TypeInfo type = expression.getResultingType();
-        if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
-            String falseLabel = nextLabel("bool_false");
-            String endLabel = nextLabel("bool_end");
-            writeLine(DUP + VmLayout.DOUBLE_BYTES);
-            writeLine("PUSHD, 0.0");
-            writeLine("DEQ");
-            writeLine(JUMPT + falseLabel);
-            writeLine(DUP + VmLayout.DOUBLE_BYTES);
-            writeLine("DEQ");
-            writeLine(JUMP + endLabel);
-            writeLabel(falseLabel);
-            writeLine("POP, " + VmLayout.DOUBLE_BYTES);
-            writeLine(PUSHI_0);
-            writeLabel(endLabel);
-        }
-    }
-
-    private void emitLiteralPush(LiteralExpression<?> node) {
-        switch (node.getKind()) {
-            case INT -> writeLine(PUSHI + node.getValue());
-            case DOUBLE -> writeLine(PUSHD + formatDouble((Double) node.getValue()));
-            case BOOLEAN -> writeLine(PUSHI + (Boolean.TRUE.equals(node.getValue()) ? "1" : "0"));
-            case CHAR -> writeLine(PUSHI + (int) (Character) node.getValue());
-            case STRING -> {
-                var entry = dataSection.internString((String) node.getValue());
-                writeLine(PUSHR + entry.getLabel());
-            }
-            case NULL -> writeLine(PUSHI_0);
-        }
-    }
-
-    private String formatDouble(double value) {
-        if (value == Math.floor(value) && !Double.isInfinite(value)) {
-            return String.format(Locale.ROOT, "%.1f", value);
-        }
-        return Double.toString(value);
-    }
-
-    private void emitNumericLiteralPush(TypeInfo type, int value) {
-        if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
-            writeLine(PUSHD + formatDouble(value));
-            return;
-        }
-        writeLine(PUSHI + value);
-    }
-
-    private void emitDefaultValue(TypeInfo type, Object value) {
-        if (type instanceof EnumTypeInfo) {
-            writeLine(PUSHI_0);
-            return;
-        }
-        if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
-            writeLine(PUSHD + formatDouble((Double) value));
-            return;
-        }
-        if (PrimitiveTypeInfo.BOOL.equals(type)) {
-            writeLine(PUSHI + (Boolean.TRUE.equals(value) ? 1 : 0));
-            return;
-        }
-        if (PrimitiveTypeInfo.CHAR.equals(type)) {
-            writeLine(PUSHI + (int) (Character) value);
-            return;
-        }
-        if (value instanceof Number number) {
-            writeLine(PUSHI + number.intValue());
-            return;
-        }
-        writeLine(PUSHI_0);
-    }
-
-    private void emitBinaryOp(BinaryExpressionKind operator, TypeInfo operandType) {
-        boolean isDouble = PrimitiveTypeInfo.DOUBLE.equals(operandType);
-        switch (operator) {
-            case ADD -> writeLine(isDouble ? "DADD" : "IADD");
-            case SUBTRACT -> writeLine(isDouble ? "DSUB" : "ISUB");
-            case MULTIPLY -> writeLine(isDouble ? "DMUL" : "IMUL");
-            case DIVIDE -> writeLine(isDouble ? "DDIV" : "IDIV");
-            case MODULO -> writeLine("IMOD");
-            case BITWISE_AND -> writeLine("IAND");
-            case BITWISE_OR -> writeLine("IOR");
-            case BITWISE_XOR -> writeLine("IXOR");
-            case SHIFT_LEFT -> writeLine("ISHL");
-            case SHIFT_RIGHT -> writeLine("ISHR");
-            case LESS -> writeLine(isDouble ? "DLT" : "ILT");
-            case LESS_EQUALS -> writeLine(isDouble ? "DLE" : "ILE");
-            case GREATER -> writeLine(isDouble ? "DGT" : "IGT");
-            case GREATER_EQUALS -> writeLine(isDouble ? "DGE" : "IGE");
-            case EQUALS -> writeLine(isDouble ? "DEQ" : "IEQ");
-            case NOT_EQUALS -> writeLine(isDouble ? "DNE" : "INE");
-            case AND, OR -> {
-                throw new IllegalStateException("Logical operators require expression-level emission.");
-            }
-            case INVALID -> {
-                throw new IllegalStateException(UNEXPECTED_BINARY_OPERATOR + operator);
+            case BOOLEAN -> {
+                if (from.equals(Ir.Type.DOUBLE)) {
+                    String zero = label("bool_false"), end = label("bool_end");
+                    dup(from); line("PUSHD, 0.0"); line("DEQ"); line("JUMPT, " + zero);
+                    dup(from); line("DEQ"); line("JUMP, " + end);
+                    mark(zero); pop(from); line("PUSHI, 0"); mark(end);
+                } else { line("PUSHI, 0"); line("INE"); }
             }
         }
     }
-
-    private void emitBinaryOp(BinaryExpression node, TypeInfo operandType) {
-        switch (node.getOperator()) {
-            case AND -> emitLogicalAnd(node);
-            case OR -> emitLogicalOr(node);
-            case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO,
-                 BITWISE_AND, BITWISE_OR, BITWISE_XOR, SHIFT_LEFT, SHIFT_RIGHT,
-                 LESS, LESS_EQUALS, GREATER, GREATER_EQUALS, EQUALS, NOT_EQUALS ->
-                    emitBinaryOp(node.getOperator(), operandType);
-            case INVALID -> {
-                throw new IllegalStateException(UNEXPECTED_BINARY_OPERATOR + node.getOperator());
-            }
+    private void numericConversion(Ir.Type from, Ir.Type to) {
+        if (from.equals(to)) return;
+        if (from.equals(Ir.Type.INT) && to.equals(Ir.Type.DOUBLE)) line("I2D");
+        else if (from.equals(Ir.Type.DOUBLE) && to.equals(Ir.Type.INT)) line("D2I");
+        else if (!(from.reference() && to.reference())) require(false, SourceRange.UNKNOWN, "Unsupported numeric conversion " + from + " -> " + to);
+    }
+    private void binary(Ir.BinaryOp op, Ir.Type operand) {
+        boolean floating = operand.equals(Ir.Type.DOUBLE);
+        String instruction = switch (op) {
+            case ADD -> floating ? "DADD" : "IADD"; case SUBTRACT -> floating ? "DSUB" : "ISUB";
+            case MULTIPLY -> floating ? "DMUL" : "IMUL"; case DIVIDE -> floating ? "DDIV" : "IDIV";
+            case MODULO -> "IMOD"; case BITWISE_AND -> "IAND"; case BITWISE_OR -> "IOR"; case BITWISE_XOR -> "IXOR";
+            case SHIFT_LEFT -> "ISHL"; case SHIFT_RIGHT -> "ISHR";
+            case LESS -> floating ? "DLT" : "ILT"; case LESS_EQUALS -> floating ? "DLE" : "ILE";
+            case GREATER -> floating ? "DGT" : "IGT"; case GREATER_EQUALS -> floating ? "DGE" : "IGE";
+            case EQUALS -> operand.equals(Ir.Type.STRING) ? "STREQ" : floating ? "DEQ" : "IEQ";
+            case NOT_EQUALS -> operand.equals(Ir.Type.STRING) ? "STRNE" : floating ? "DNE" : "INE";
+        };
+        line(instruction);
+    }
+    private void literal(Ir.Literal value) {
+        if (value.value() == null) { line("PUSHI, 0"); return; }
+        switch (value.type().kind()) {
+            case DOUBLE -> line("PUSHD, " + Double.toString((Double) value.value()));
+            case STRING -> line("PUSHR, " + data.internString((String) value.value()).label());
+            case BOOL -> line("PUSHI, " + (Boolean.TRUE.equals(value.value()) ? 1 : 0));
+            case CHAR -> line("PUSHI, " + (int) (Character) value.value());
+            case INT -> line("PUSHI, " + value.value());
+            default -> throw new CompilerInvariantException(value.source(), "Unexpected literal type " + value.type());
         }
     }
-
-    private void emitEqualityCompare(TypeInfo leftType, TypeInfo rightType) {
-        if (PrimitiveTypeInfo.STRING.equals(leftType) || PrimitiveTypeInfo.STRING.equals(rightType)) {
-            writeLine("STREQ");
-            return;
-        }
-        TypeInfo operandType = TypeRules.equalityOperandType(leftType, rightType);
-        emitBinaryOp(BinaryExpressionKind.EQUALS, operandType);
-    }
-
-    private void emitFrameLoad(StorageEntry storage) {
-        emitStorageAddress(storage);
-        emitLoad(storage.getType());
-    }
-
-    private void emitAddress(ExpressionAstNode expression) {
-        if (expression instanceof NameExpression name && name.getSymbolEntry() instanceof StorageEntry storage) {
-            emitStorageAddress(storage);
-            return;
-        }
-        if (expression instanceof IndexExpression index) {
-            emitIndexAddress(index);
-            return;
-        }
-        if (expression instanceof MemberAccessExpression memberExpression)
-            emitMemberAddress(memberExpression);
-    }
-
-    private void emitStorageAddress(StorageEntry storage) {
-        int offset = metadata.storage(storage).offsetBytes();
-        if (storage instanceof ParameterEntry) {
-            offset += metadata.function(currentFunction).localBytes();
-        }
-        writeLine(LOCAL + offset);
-    }
-
-    private void emitIndexAddress(IndexExpression node) {
-        TypeInfo targetType = node.getTarget().getResultingType();
-        TypeInfo elementType = PrimitiveTypeInfo.STRING.equals(targetType)
-                ? PrimitiveTypeInfo.CHAR
-                : ((ArrayTypeInfo) targetType).elementType();
-        node.getTarget().accept(this);
-        emitTyped(node.getIndex(), PrimitiveTypeInfo.INT);
-        int elementSize = memoryBytes(elementType);
-        writeLine("BOUNDS, " + elementSize);
-        if (elementSize != VmLayout.BYTE_BYTES) {
-            writeLine(PUSHI + elementSize);
-            writeLine("IMUL");
-        }
-        emitArrayPayloadOffset();
-        writeLine("IADD");
-    }
-
-    private void emitMemberAddress(MemberAccessExpression node) {
-        FieldEntry field = node.getResolvedField();
-        node.getTarget().accept(this);
-        int offsetBytes = metadata.storage(field).offsetBytes();
-        if (offsetBytes != 0) {
-            writeLine(PUSHI + offsetBytes);
-            writeLine("IADD");
-        }
-    }
-
-    private boolean isLengthAccess(MemberAccessExpression node) {
-        if (!"length".equals(node.getMemberName())) {
-            return false;
-        }
-        TypeInfo targetType = node.getTarget().getResultingType();
-        return PrimitiveTypeInfo.STRING.equals(targetType) || targetType instanceof ArrayTypeInfo;
-    }
-
-    private void emitLoad(TypeInfo type) {
-        writeLine(memoryWidth(type).loadInstruction());
-    }
-
-    private void emitStore(TypeInfo type) {
-        writeLine(memoryWidth(type).storeInstruction());
-    }
-
-    private void emitDup(TypeInfo type) {
-        writeLine(DUP + stackBytes(type));
-    }
-
-    private void emitPop(TypeInfo type) {
-        writeLine("POP, " + stackBytes(type));
-    }
-
-    private void emitReturn(TypeInfo type) {
-        writeLine("RET, " + returnBytes(type));
-    }
-
-    private int memoryBytes(TypeInfo type) {
-        return memoryWidth(type).bytes();
-    }
-
-    private VmLayout.MemoryWidth memoryWidth(TypeInfo type) {
-        return VmLayout.memoryWidth(type);
-    }
-
-    private int stackBytes(TypeInfo type) {
-        return VmLayout.stackBytes(type);
-    }
-
-    private int returnBytes(TypeInfo type) {
-        if (isVoidLike(type)) {
-            return 0;
-        }
-        return stackBytes(type);
-    }
-
-    private boolean isVoidLike(TypeInfo type) {
-        return type instanceof VoidTypeInfo;
-    }
-
-    private record LoopContext(String breakLabel, String continueLabel) {
-    }
-
-    private record SwitchTarget(SwitchCase switchCase, String label) {
-    }
-
+    private void defaultValue(Ir.Type type) { line(type.equals(Ir.Type.DOUBLE) ? "PUSHD, 0.0" : "PUSHI, 0"); }
+    private void temp(int offset) { line("LOCAL, " + offset); line("LOAD4"); }
+    private void scale(int width) { if (width != 1) { line("PUSHI, " + width); line("IMUL"); } }
+    private void store(Ir.Type type) { line(VmLayout.memoryWidth(type).storeInstruction()); }
+    private void dup(Ir.Type type) { line("DUP, " + VmLayout.stackBytes(type)); }
+    private void pop(Ir.Type type) { if (!type.equals(Ir.Type.VOID)) line("POP, " + VmLayout.stackBytes(type)); }
+    private String label(String name) { return name + "_" + labelId++; }
+    private void mark(String label) { line(label + ":"); }
+    private void line(String text) { writeLine(text); }
+    private void require(boolean condition, SourceRange source, String message) { if (!condition) throw new CompilerInvariantException(source, message); }
 }

@@ -2,6 +2,7 @@ package ch.zhaw.it.pm4.javer.compiler.io;
 
 import ch.zhaw.it.pm4.javer.compiler.backend.OutputArtifact;
 import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.diagnostics.PhaseResult;
 import ch.zhaw.it.pm4.javer.compiler.diagnostics.Severity;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -13,8 +14,8 @@ import java.nio.file.StandardCopyOption;
 public final class ArtifactWriter {
     private ArtifactWriter() { }
 
-    public static void write(OutputArtifact artifact, Path destination, DiagnosticBag diagnostics) {
-        if (diagnostics.hasErrors() || diagnostics.isPhaseAbortRequested()) return;
+    public static PhaseResult<OutputArtifact> write(OutputArtifact artifact, Path destination, DiagnosticBag diagnostics) {
+        if (diagnostics.hasErrors() || diagnostics.isPhaseAbortRequested()) return PhaseResult.failure(diagnostics);
         Path target = destination.toAbsolutePath();
         Path temporary = null;
         try {
@@ -38,5 +39,6 @@ public final class ArtifactWriter {
                 }
             }
         }
+        return diagnostics.hasErrors() ? PhaseResult.failure(diagnostics) : PhaseResult.success(artifact);
     }
 }

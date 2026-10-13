@@ -5,7 +5,8 @@ import ch.zhaw.it.pm4.javer.compiler.backend.PreparedProgram;
 import ch.zhaw.it.pm4.javer.compiler.backend.OutputArtifact;
 import ch.zhaw.it.pm4.javer.compiler.io.ArtifactWriter;
 import java.nio.file.Path;
-import java.util.Optional;
+import ch.zhaw.it.pm4.javer.compiler.ir.IrPrinter;
+import ch.zhaw.it.pm4.javer.compiler.diagnostics.PhaseResult;
 import ch.zhaw.it.pm4.javer.compiler.backend.TargetBackend;
 import ch.zhaw.it.pm4.javer.compiler.backend.TargetBackendFactory;
 import ch.zhaw.it.pm4.javer.compiler.io.SourceFileReadException;
@@ -89,27 +90,31 @@ public class Compiler {
     /** Runs frontend analysis followed by preparation and emission for the selected target. */
     public void compile() {
         enterPhase(CompilationPhase.ARGUMENT_PARSING);
-        Optional<CheckedProgram> result = new Frontend(context.getDiagnosticBag()).analyze(
+        PhaseResult<CheckedProgram> result = new Frontend(context.getDiagnosticBag()).analyze(
                 context.getSourceCache().getSourceCode(),
                 targetBackend.builtInSignatures(),
                 options.isDumpLexer() ? dump -> printSection("LEXER TOKENS", dump) : null,
                 options.isDumpAst() ? dump -> printSection("AST", dump) : null);
-        if (stopAfterPhase() || result.isEmpty()) return;
+        if (stopAfterPhase() || !result.succeeded()) return;
 
-        enterPhase(CompilationPhase.LAYOUT);
-        PreparedProgram prepared = targetBackend.prepare(result.orElseThrow(), context.getDiagnosticBag());
-        if (stopAfterPhase()) return;
+        if (options.isDumpIr()) printSection("NORMALIZED IR", IrPrinter.print(result.orElseThrow().ir()));
+
+        enterPhase(CompilationPhase.TARGET_VALIDATION);
+        PhaseResult<PreparedProgram> preparation = targetBackend.prepare(result.orElseThrow(), context.getDiagnosticBag());
+        if (stopAfterPhase() || !preparation.succeeded()) return;
+        PreparedProgram prepared = preparation.orElseThrow();
         if (options.isDumpSymbolTable()) {
             printSection("SYMBOL TABLE", prepared.dumpSymbolTable());
         }
 
         enterPhase(CompilationPhase.CODE_GENERATION);
-        Optional<OutputArtifact> artifact = prepared.generate(context.getDiagnosticBag());
-        if (stopAfterPhase() || artifact.isEmpty()) return;
+        PhaseResult<OutputArtifact> artifact = prepared.generate(context.getDiagnosticBag());
+        if (stopAfterPhase() || !artifact.succeeded()) return;
 
         enterPhase(CompilationPhase.OUTPUT_WRITING);
-        ArtifactWriter.write(artifact.orElseThrow(), Path.of(options.getOutputFilePath()), context.getDiagnosticBag());
-        if (stopAfterPhase()) return;
+        PhaseResult<OutputArtifact> publication = ArtifactWriter.write(artifact.orElseThrow(), Path.of(options.getOutputFilePath()), context.getDiagnosticBag());
+        if (stopAfterPhase() || !publication.succeeded()) return;
+        if (!context.getDiagnosticBag().getDiagnostics().isEmpty()) System.err.print(context.getDiagnosticBag().dumpReport());
         System.out.println("Compilation Successful");
     }
 

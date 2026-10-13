@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.frontend.analysis;
 
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.AstNodeVisitorBase;
 import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.AstNode;
 import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.case_label.CaseLabelAstNode;
@@ -24,7 +23,7 @@ import java.util.Set;
 /**
  * Assigns semantic type information to expression and type AST nodes.
  */
-public class TypeCheckVisitor extends AstNodeVisitorBase {
+public class TypeCheckVisitor extends TypeResolvingVisitor {
 
     private final DiagnosticBag diagnosticBag;
     private final Set<StorageEntry> invalidInitializedVariables = new HashSet<>();

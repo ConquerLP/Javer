@@ -1,6 +1,5 @@
 package ch.zhaw.it.pm4.javer.compiler.frontend.analysis;
 
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.AstNodeVisitorBase;
 import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.CompilationUnit;
 import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.declaration.*;
 import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.statement.BlockStatement;
@@ -24,7 +23,7 @@ import java.util.function.Consumer;
  * Builds scopes and symbol-table entries for declarations before name
  * resolution.
  */
-public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
+public class SymbolDeclarationVisitor extends TypeResolvingVisitor {
 
     private final DiagnosticBag diagnosticBag;
     private final List<BuiltInSignature> builtInFunctions;
@@ -74,10 +73,10 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         for (BuiltInSignature signature : builtInFunctions) {
             FunctionEntry symbol = new FunctionEntry(signature.name());
             symbol.setBuiltIn(true);
-            symbol.setReturnType(signature.returnType());
+            symbol.setReturnType(runtimeType(signature.returnType()));
             FunctionScope scope = new FunctionScope();
             for (BuiltInSignature.Parameter parameter : signature.parameters()) {
-                if (!scope.defineParameter(new ParameterEntry(parameter.name(), parameter.type()))) {
+                if (!scope.defineParameter(new ParameterEntry(parameter.name(), runtimeType(parameter.type())))) {
                     diagnosticBag.add(null, Severity.ERROR,
                             "Duplicate runtime parameter: " + signature.name() + "." + parameter.name());
                 }
@@ -87,6 +86,21 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
                 diagnosticBag.add(null, Severity.ERROR, "Duplicate runtime function: " + signature.name());
             }
         }
+    }
+
+    private TypeInfo runtimeType(ch.zhaw.it.pm4.javer.compiler.ir.Ir.Type type) {
+        return switch (type.kind()) {
+            case VOID -> VoidTypeInfo.INSTANCE;
+            case BOOL -> PrimitiveTypeInfo.BOOL;
+            case CHAR -> PrimitiveTypeInfo.CHAR;
+            case INT -> PrimitiveTypeInfo.INT;
+            case DOUBLE -> PrimitiveTypeInfo.DOUBLE;
+            case STRING -> PrimitiveTypeInfo.STRING;
+            case ARRAY -> new ArrayTypeInfo(runtimeType(type.element()));
+            default -> throw new ch.zhaw.it.pm4.javer.compiler.diagnostics.CompilerInvariantException(
+                    ch.zhaw.it.pm4.javer.compiler.source.SourceRange.UNKNOWN,
+                    "Runtime signatures cannot refer to source-owned or internal types: " + type);
+        };
     }
 
     private void registerTopLevelDeclaration(DeclarationAstNode declaration) {

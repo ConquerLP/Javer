@@ -1,7 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler.backend.vm;
 
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.nodes.type.PrimitiveTypeKind;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.typeinfo.*;
+import ch.zhaw.it.pm4.javer.compiler.ir.Ir;
 
 /**
  * Centralizes the byte layout expected by the VM bytecode target.
@@ -26,63 +25,24 @@ public final class VmLayout {
      * @return the number of bytes required on the stack
      * @throws IllegalArgumentException if the type has no stack representation
      */
-    public static int stackBytes(TypeInfo type) {
-        if (PrimitiveTypeInfo.DOUBLE.equals(type)) {
-            return DOUBLE_BYTES;
-        }
-        if (isWordStackType(type)) {
-            return WORD_BYTES;
-        }
-        throw new IllegalArgumentException("Type has no stack representation: " + type);
+    public static int stackBytes(Ir.Type type) {
+        return switch (type.kind()) {
+            case DOUBLE -> DOUBLE_BYTES;
+            case VOID -> 0;
+            case BOOL, CHAR, INT, STRING, ENUM, ARRAY, STRUCT, ADDRESS, NULL -> WORD_BYTES;
+        };
     }
 
-    /**
-     * Returns the number of bytes used for returning the given type from a function.
-     *
-     * @param type the return type to evaluate
-     * @return number of bytes used for returning the value (0 for void)
-     */
-    public static int returnBytes(TypeInfo type) {
-        if (type instanceof VoidTypeInfo) {
-            return 0;
-        }
-        return stackBytes(type);
-    }
+    public static int returnBytes(Ir.Type type) { return stackBytes(type); }
 
-    /**
-     * Maps a high-level type to its corresponding VM memory width.
-     *
-     * @param type the type to evaluate
-     * @return the memory width used for load/store operations
-     * @throws IllegalArgumentException if the type has no memory representation
-     */
-    public static MemoryWidth memoryWidth(TypeInfo type) {
-        if (type instanceof PrimitiveTypeInfo(PrimitiveTypeKind kind)) {
-            return switch (kind) {
-                case BOOL -> MemoryWidth.BYTE;
-                case CHAR -> MemoryWidth.CHAR;
-                case DOUBLE -> MemoryWidth.DOUBLE;
-                case INT, STRING -> MemoryWidth.WORD;
-                case INVALID -> throw new IllegalArgumentException("Invalid primitive type has no memory width.");
-            };
-        }
-        if (type instanceof EnumTypeInfo || type instanceof ArrayTypeInfo || type instanceof StructTypeInfo) {
-            return MemoryWidth.WORD;
-        }
-        throw new IllegalArgumentException("Type has no memory width: " + type);
-    }
-
-    private static boolean isWordStackType(TypeInfo type) {
-        if (type instanceof PrimitiveTypeInfo(PrimitiveTypeKind kind)) {
-            return switch (kind) {
-                case BOOL, CHAR, INT, STRING -> true;
-                case DOUBLE, INVALID -> false;
-            };
-        }
-        return type instanceof EnumTypeInfo
-                || type instanceof ArrayTypeInfo
-                || type instanceof StructTypeInfo
-                || type instanceof NullTypeInfo;
+    public static MemoryWidth memoryWidth(Ir.Type type) {
+        return switch (type.kind()) {
+            case BOOL -> MemoryWidth.BYTE;
+            case CHAR -> MemoryWidth.CHAR;
+            case DOUBLE -> MemoryWidth.DOUBLE;
+            case INT, STRING, ENUM, ARRAY, STRUCT, ADDRESS, NULL -> MemoryWidth.WORD;
+            case VOID -> throw new IllegalArgumentException("Void has no storage width");
+        };
     }
 
     public enum MemoryWidth {

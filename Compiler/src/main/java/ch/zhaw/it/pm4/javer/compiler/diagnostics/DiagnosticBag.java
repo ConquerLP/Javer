@@ -72,6 +72,8 @@ public class DiagnosticBag {
         if (errorLimitReached) {
             return;
         }
+        diagnostic = new Diagnostic(diagnostic.location(), diagnostic.severity(), diagnostic.message(),
+                diagnostic.phase() == null ? phase : diagnostic.phase());
         diagnostics.add(diagnostic);
         enforceErrorLimit(diagnostic);
     }
@@ -101,7 +103,7 @@ public class DiagnosticBag {
         diagnostics.add(new Diagnostic(
                 null,
                 Severity.SEVERE,
-                "Diagnostic limit of " + errorLimit + " error(s) reached; further diagnostics suppressed."));
+                "Diagnostic limit of " + errorLimit + " error(s) reached; further diagnostics suppressed.", phase));
         requestPhaseAbort();
     }
 
@@ -156,7 +158,7 @@ public class DiagnosticBag {
     public String dumpReport() {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("=== Error Report ===\n");
+        sb.append("=== Diagnostic Report ===\n");
         sb.append("File: ").append(filePath).append("\n");
         sb.append("Phase: ").append(phase).append("\n\n");
 
@@ -181,6 +183,7 @@ public class DiagnosticBag {
 
         sb.append("[")
                 .append(diagnostic.severity().name())
+                .append(diagnostic.phase() == null ? "" : " / " + diagnostic.phase())
                 .append("] ")
                 .append(diagnostic.message())
                 .append("\n");

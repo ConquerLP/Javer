@@ -1,8 +1,6 @@
 package ch.zhaw.it.pm4.javer.compiler.backend.vm;
 
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.typeinfo.PrimitiveTypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.typeinfo.TypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.frontend.ast.typeinfo.VoidTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ir.Ir;
 import ch.zhaw.it.pm4.javer.compiler.frontend.BuiltInSignature;
 import java.util.List;
 
@@ -10,17 +8,17 @@ import java.util.List;
  * VM instruction mapping for semantic built-in functions.
  */
 enum VmBuiltInFunction {
-    PRINTB("printb", PrimitiveTypeInfo.BOOL, "PRINTB"),
-    PRINTC("printc", PrimitiveTypeInfo.CHAR, "PRINTC"),
-    PRINTI("printi", PrimitiveTypeInfo.INT, "PRINTI"),
-    PRINTD("printd", PrimitiveTypeInfo.DOUBLE, "PRINTD"),
-    PRINTS("prints", PrimitiveTypeInfo.STRING, "PRINTS");
+    PRINTB("printb", Ir.Type.BOOL, "PRINTB"),
+    PRINTC("printc", Ir.Type.CHAR, "PRINTC"),
+    PRINTI("printi", Ir.Type.INT, "PRINTI"),
+    PRINTD("printd", Ir.Type.DOUBLE, "PRINTD"),
+    PRINTS("prints", Ir.Type.STRING, "PRINTS");
 
     private final String name;
-    private final TypeInfo parameterType;
+    private final Ir.Type parameterType;
     private final String instruction;
 
-    VmBuiltInFunction(String name, TypeInfo parameterType, String instruction) {
+    VmBuiltInFunction(String name, Ir.Type parameterType, String instruction) {
         this.name = name;
         this.parameterType = parameterType;
         this.instruction = instruction;
@@ -36,11 +34,11 @@ enum VmBuiltInFunction {
     }
 
     BuiltInSignature signature() {
-        return new BuiltInSignature(name, VoidTypeInfo.INSTANCE,
+        return new BuiltInSignature(name, Ir.Type.VOID,
                 List.of(new BuiltInSignature.Parameter("value", parameterType)));
     }
 
-    public TypeInfo parameterType() {
+    public Ir.Type parameterType() {
         return parameterType;
     }
 

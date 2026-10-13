@@ -22,6 +22,7 @@ public class CompilerOptions {
     private final CompilationTarget target;
     private final boolean dumpLexer;
     private final boolean dumpAst;
+    private final boolean dumpIr;
     private final boolean dumpSymbolTable;
 
     private CompilerOptions(
@@ -30,6 +31,7 @@ public class CompilerOptions {
             CompilationTarget target,
             boolean dumpLexer,
             boolean dumpAst,
+            boolean dumpIr,
             boolean dumpSymbolTable) {
 
         this.inputFilePath = inputFilePath;
@@ -37,6 +39,7 @@ public class CompilerOptions {
         this.target = target;
         this.dumpLexer = dumpLexer;
         this.dumpAst = dumpAst;
+        this.dumpIr = dumpIr;
         this.dumpSymbolTable = dumpSymbolTable;
     }
 
@@ -54,6 +57,7 @@ public class CompilerOptions {
         CompilationTarget target = CompilationTarget.VM;
         boolean dumpLexer = false;
         boolean dumpAst = false;
+        boolean dumpIr = false;
         boolean dumpSymbolTable = false;
 
         if (args.length == 2 && !args[0].startsWith("-") && !args[1].startsWith("-")) {
@@ -78,6 +82,7 @@ public class CompilerOptions {
                     }
                     case "--dump-lexer" -> dumpLexer = true;
                     case "--dump-ast" -> dumpAst = true;
+                    case "--dump-ir" -> dumpIr = true;
                     case "--dump-symboltable" -> dumpSymbolTable = true;
                     default -> {
                         throw new CompilerOptionException("Unknown compiler option: " + arg);
@@ -100,6 +105,7 @@ public class CompilerOptions {
                 target,
                 dumpLexer,
                 dumpAst,
+                dumpIr,
                 dumpSymbolTable
         );
     }
@@ -183,9 +189,11 @@ public class CompilerOptions {
         return dumpSymbolTable;
     }
 
+    public boolean isDumpIr() { return dumpIr; }
+
     public static String usage() {
         return "Usage: compiler --in-file <source.javer> --out-file <output-path-without-extension> "
-                + "[--target vm|fanuc-macro-b] [--dump-lexer] [--dump-ast] [--dump-symboltable]";
+                + "[--target vm|fanuc-macro-b] [--dump-lexer] [--dump-ast] [--dump-ir] [--dump-symboltable]";
     }
 
     public static class CompilerOptionException extends IllegalArgumentException {

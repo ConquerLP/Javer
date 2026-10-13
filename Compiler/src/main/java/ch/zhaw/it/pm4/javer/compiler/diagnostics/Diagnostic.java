@@ -1,6 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.diagnostics;
 
 import ch.zhaw.it.pm4.javer.compiler.source.SourceLocation;
+import ch.zhaw.it.pm4.javer.compiler.CompilationPhase;
 
 /**
  * Represents a single user-facing issue discovered during compilation.
@@ -14,10 +15,13 @@ import ch.zhaw.it.pm4.javer.compiler.source.SourceLocation;
  * <li>type mismatch (type check)</li>
  * </ul>
  */
-public record Diagnostic(SourceLocation location, Severity severity, String message) {
+public record Diagnostic(SourceLocation location, Severity severity, String message, CompilationPhase phase) {
+    public Diagnostic(SourceLocation location, Severity severity, String message) {
+        this(location, severity, message, null);
+    }
 
     @Override
     public String toString() {
-        return String.format("[%s] at %s: %s", severity.name(), location.toString(), message);
+        return String.format("[%s] at %s: %s", severity.name(), location == null ? "<compiler>" : location.toString(), message);
     }
 }
