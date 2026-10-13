@@ -69,21 +69,35 @@ backend placeholder and does not yet emit a program or provide built-in function
 
 ## Compiler architecture
 
-`Compiler` selects the target and coordinates two stages:
+`Compiler` selects the target and coordinates analysis, preparation, generation,
+and writing the completed output:
 
 - `frontend.Frontend` performs lexing, parsing, symbol declaration, name
-  resolution, type checking, and semantic analysis. Its result is a checked AST.
-  AST nodes, symbols, and scopes contain semantic information only.
+  resolution, type checking, and semantic analysis. It returns
+  `Optional<CheckedProgram>`; only the frontend can construct a checked program.
+  Lexer, parser, AST nodes, symbols, and scopes live under `frontend`.
+  Language checks live in `frontend.analysis`, generic AST traversal in
+  `frontend.ast`, and diagnostic dumps in `frontend.debug`.
+  The semantic tree contains no target layouts and backends treat it as read-only.
   The language requires exactly one `fn void main()`; the frontend validates it.
-- `codegen.TargetBackend` supplies fresh built-in function signatures before
-  frontend analysis, then prepares target-specific state and creates the code
-  generator. Target preparation does not modify the semantic AST or symbols.
+- `backend.TargetBackend` supplies immutable `BuiltInSignature` descriptions.
+  The frontend creates its own function symbols and parameter scopes from them.
+  Preparation accepts a `CheckedProgram` and returns a `PreparedProgram` that
+  binds that program to its target-specific metadata. The backend itself keeps
+  no per-compilation state.
+- `PreparedProgram.generate()` returns an optional immutable `OutputArtifact`.
+  Generators perform no filesystem operations; artifacts can contain UTF-8 text
+  or binary data. `io.ArtifactWriter` writes the completed artifact through a
+  temporary file, using atomic replacement where supported. Failed analysis or
+  generation leaves any existing destination file untouched.
 
 The VM backend owns runtime functions, labels, data
 encoding, storage and frame layouts, and temporary array allocation slots.
-Each preparation creates fresh `VmMetadata`, including temporary slots keyed
-by AST node. VM symbol-table dumps read this metadata; the generic symbol-table
-printer displays semantic information without target layout fields.
+Each `VmPreparedProgram` owns fresh `VmMetadata`, including temporary slots keyed
+by AST node. Generators and symbol-table dumps use that same preparation result,
+so the AST and layout cannot be accidentally paired through separate API calls.
+The generic symbol-table printer displays semantic information without target
+layout fields.
 
 Additional backends implement `TargetBackend` and are selected through
 `CompilationTarget` and `TargetBackendFactory`. They consume the same frontend
@@ -97,3 +111,27 @@ VM options:
 --dump-on-error
 -h, --help
 ```
+
+## Compiler package structure
+
+```text
+compiler/
+  Compiler.java, CompilerOptions.java, CompilationContext.java
+  CompilationPhase.java, CompilationTarget.java
+  frontend/
+    ast/
+    lexer/
+    parser/
+    analysis/
+    debug/
+  backend/
+    vm/
+    fanuc/
+  source/
+  diagnostics/
+  io/
+```
+
+`source` contains source text and positions; `diagnostics` contains error
+collection and reporting. `io` publishes completed artifacts. Frontend analysis
+does not depend on backend implementation packages.

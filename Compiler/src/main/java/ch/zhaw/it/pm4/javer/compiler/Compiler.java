@@ -1,12 +1,17 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import ch.zhaw.it.pm4.javer.compiler.ast.nodes.CompilationUnit;
-import ch.zhaw.it.pm4.javer.compiler.codegen.TargetBackend;
-import ch.zhaw.it.pm4.javer.compiler.codegen.TargetBackendFactory;
+import ch.zhaw.it.pm4.javer.compiler.frontend.CheckedProgram;
+import ch.zhaw.it.pm4.javer.compiler.backend.PreparedProgram;
+import ch.zhaw.it.pm4.javer.compiler.backend.OutputArtifact;
+import ch.zhaw.it.pm4.javer.compiler.io.ArtifactWriter;
+import java.nio.file.Path;
+import java.util.Optional;
+import ch.zhaw.it.pm4.javer.compiler.backend.TargetBackend;
+import ch.zhaw.it.pm4.javer.compiler.backend.TargetBackendFactory;
 import ch.zhaw.it.pm4.javer.compiler.io.SourceFileReadException;
-import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
+import ch.zhaw.it.pm4.javer.compiler.source.SourceCache;
+import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.diagnostics.Severity;
 import ch.zhaw.it.pm4.javer.compiler.frontend.Frontend;
 
 /**
@@ -84,19 +89,26 @@ public class Compiler {
     /** Runs frontend analysis followed by preparation and emission for the selected target. */
     public void compile() {
         enterPhase(CompilationPhase.ARGUMENT_PARSING);
-        CompilationUnit rootNode = new Frontend(context.getDiagnosticBag()).analyze(
+        Optional<CheckedProgram> result = new Frontend(context.getDiagnosticBag()).analyze(
                 context.getSourceCache().getSourceCode(),
-                targetBackend.createBuiltInSymbols(),
+                targetBackend.builtInSignatures(),
                 options.isDumpLexer() ? dump -> printSection("LEXER TOKENS", dump) : null,
                 options.isDumpAst() ? dump -> printSection("AST", dump) : null);
-        if (stopAfterPhase() || rootNode == null) return;
+        if (stopAfterPhase() || result.isEmpty()) return;
 
-        prepareTarget(rootNode);
+        enterPhase(CompilationPhase.LAYOUT);
+        PreparedProgram prepared = targetBackend.prepare(result.orElseThrow(), context.getDiagnosticBag());
         if (stopAfterPhase()) return;
         if (options.isDumpSymbolTable()) {
-            printSection("SYMBOL TABLE", targetBackend.dumpSymbolTable(rootNode));
+            printSection("SYMBOL TABLE", prepared.dumpSymbolTable());
         }
-        generateCode(rootNode);
+
+        enterPhase(CompilationPhase.CODE_GENERATION);
+        Optional<OutputArtifact> artifact = prepared.generate(context.getDiagnosticBag());
+        if (stopAfterPhase() || artifact.isEmpty()) return;
+
+        enterPhase(CompilationPhase.OUTPUT_WRITING);
+        ArtifactWriter.write(artifact.orElseThrow(), Path.of(options.getOutputFilePath()), context.getDiagnosticBag());
         if (stopAfterPhase()) return;
         System.out.println("Compilation Successful");
     }
@@ -134,15 +146,4 @@ public class Compiler {
         context.getDiagnosticBag().setPhase(nextPhase);
     }
 
-    private void prepareTarget(CompilationUnit node) {
-        enterPhase(CompilationPhase.LAYOUT);
-        targetBackend.prepare(node, context.getDiagnosticBag());
-    }
-
-    private void generateCode(CompilationUnit node) {
-        enterPhase(CompilationPhase.CODE_GENERATION);
-        targetBackend
-                .createCodeGenerator(context.getDiagnosticBag(), options.getOutputFilePath())
-                .generate(node);
-    }
 }

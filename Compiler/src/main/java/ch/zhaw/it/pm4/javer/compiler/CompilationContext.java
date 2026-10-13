@@ -1,7 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler;
 
-import ch.zhaw.it.pm4.javer.compiler.misc.SourceCache;
-import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
+import ch.zhaw.it.pm4.javer.compiler.source.SourceCache;
+import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
 
 /**
  * Mutable context shared by compiler phases during one compilation run.
