@@ -10,18 +10,16 @@ public final class ParameterEntry extends StorageEntry {
     private final boolean variadic;
     private final TypeInfo variadicElementType;
 
-    public ParameterEntry(String name, TypeInfo type, int sizeBytes, int offsetBytes) {
-        this(name, type, sizeBytes, offsetBytes, false, null);
+    public ParameterEntry(String name, TypeInfo type) {
+        this(name, type, false, null);
     }
 
     public ParameterEntry(
             String name,
             TypeInfo type,
-            int sizeBytes,
-            int offsetBytes,
             boolean variadic,
             TypeInfo variadicElementType) {
-        super(name, type, sizeBytes, offsetBytes);
+        super(name, type);
         this.variadic = variadic;
         this.variadicElementType = variadicElementType;
     }

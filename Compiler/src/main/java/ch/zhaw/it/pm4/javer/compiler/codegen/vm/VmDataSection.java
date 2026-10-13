@@ -1,12 +1,10 @@
 package ch.zhaw.it.pm4.javer.compiler.codegen.vm;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
-import ch.zhaw.it.pm4.javer.compiler.ast.symbol.DataEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
-import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,8 +16,8 @@ import java.util.Map;
  */
 final class VmDataSection {
 
-    private final Map<String, DataEntry> entries = new LinkedHashMap<>();
-    private final Map<String, DataEntry> strings = new LinkedHashMap<>();
+    private final Map<String, VmDataEntry> entries = new LinkedHashMap<>();
+    private final Map<String, VmDataEntry> strings = new LinkedHashMap<>();
     private int nextArrayTemplateId;
 
     private static List<String> encodeString(String value) {
@@ -59,21 +57,21 @@ final class VmDataSection {
         return String.format(format, value & mask);
     }
 
-    public DataEntry internString(String value) {
-        DataEntry existing = strings.get(value);
+    public VmDataEntry internString(String value) {
+        VmDataEntry existing = strings.get(value);
         if (existing != null) {
             return existing;
         }
 
         String label = "string_" + strings.size();
         List<String> encoded = encodeString(value);
-        DataEntry entry = addConstant(label, PrimitiveTypeInfo.of(PrimitiveTypeKind.CHAR), encoded, VmLayout.BYTE_BYTES);
+        VmDataEntry entry = addConstant(label, PrimitiveTypeInfo.of(PrimitiveTypeKind.CHAR), encoded, VmLayout.BYTE_BYTES);
         strings.put(value, entry);
         return entry;
     }
 
-    public DataEntry addConstant(String label, TypeInfo type, Object value, int elementSizeBytes) {
-        DataEntry entry = new DataEntry(label, type, value, elementSizeBytes);
+    public VmDataEntry addConstant(String label, TypeInfo type, Object value, int elementSizeBytes) {
+        VmDataEntry entry = new VmDataEntry(label, type, value, elementSizeBytes);
         entries.put(label, entry);
         return entry;
     }
@@ -93,7 +91,7 @@ final class VmDataSection {
         addConstant(layout.dataLabel(), PrimitiveTypeInfo.INT, values, layout.elementSizeBytes());
     }
 
-    public DataEntry addArrayTemplate(TypeInfo elementType, List<Object> values) {
+    public VmDataEntry addArrayTemplate(TypeInfo elementType, List<Object> values) {
         String label = "array_template_" + nextArrayTemplateId++;
         int width = VmLayout.memoryWidth(elementType).bytes();
         List<String> encoded = values.stream()
@@ -102,7 +100,7 @@ final class VmDataSection {
         return addConstant(label, elementType, encoded, width);
     }
 
-    public Map<String, DataEntry> getEntries() {
+    public Map<String, VmDataEntry> getEntries() {
         return entries;
     }
 }

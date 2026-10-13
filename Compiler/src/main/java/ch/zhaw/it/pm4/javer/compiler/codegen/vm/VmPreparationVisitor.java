@@ -14,7 +14,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.EnumValueEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.VariableEntry;
-import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.visitor.AstNodeVisitorBase;
 
 /**
@@ -24,6 +23,8 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
 
     private final VmMetadata metadata;
     private FunctionEntry currentFunction;
+    private int parameterBytes;
+    private int localBytes;
 
     VmPreparationVisitor(VmMetadata metadata) {
         this.metadata = metadata;
@@ -61,15 +62,14 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
 
         int offsetBytes = 0;
         for (EnumValueEntry value : entry.getScope().getValues().values()) {
-            value.setSizeBytes(VmLayout.WORD_BYTES);
-            value.setOffsetBytes(offsetBytes);
+
             metadata.putEnumValue(value, new VmMetadata.VmEnumValueLayout(
                     VmLayout.WORD_BYTES,
                     offsetBytes,
                     enumDataLabel(entry)));
             offsetBytes += VmLayout.WORD_BYTES;
         }
-        entry.setSizeBytes(offsetBytes);
+
         metadata.putEnum(entry, new VmMetadata.VmEnumLayout(enumDataLabel(entry), VmLayout.WORD_BYTES, offsetBytes));
     }
 
@@ -82,12 +82,10 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
         int offsetBytes = 0;
         for (FieldEntry field : node.getStructScope().getFields().values()) {
             int sizeBytes = VmLayout.memoryWidth(field.getType()).bytes();
-            field.setSizeBytes(sizeBytes);
-            field.setOffsetBytes(offsetBytes);
+
             metadata.putStorage(field, new VmMetadata.VmStorageLayout(sizeBytes, offsetBytes));
             offsetBytes += sizeBytes;
         }
-        node.getStructScope().setSizeBytes(offsetBytes);
         if (node.getSymbolEntry() != null) {
             metadata.putStruct(node.getSymbolEntry(), new VmMetadata.VmStructLayout(offsetBytes));
         }
@@ -112,9 +110,9 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
         VariableEntry entry = node.getSymbolEntry();
         if (entry != null && currentFunction != null) {
             int sizeBytes = VmLayout.memoryWidth(entry.getType()).bytes();
-            entry.setSizeBytes(sizeBytes);
-            int offsetBytes = currentFunction.allocateLocalBytes(sizeBytes);
-            entry.setOffsetBytes(offsetBytes);
+
+            int offsetBytes = allocateLocalBytes(sizeBytes);
+
             metadata.putStorage(entry, new VmMetadata.VmStorageLayout(sizeBytes, offsetBytes));
         }
         super.visit(node);
@@ -124,24 +122,24 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
     public void visit(NewExpression node) {
         if (currentFunction != null
                 && node.getArrayInit() == null
-                && node.getDimensions().size() > 1
-                && node.getJaggedArrayTempLayout() == null) {
-            node.setJaggedArrayTempLayout(allocateJaggedArrayTempLayout(node.getDimensions().size()));
+                && node.getDimensions().size() > 1) {
+            metadata.putArrayTemps(node, allocateJaggedArrayTempLayout(node.getDimensions().size()));
         }
         super.visit(node);
     }
 
     private void layoutFunctionHeader(FunctionEntry function) {
-        function.resetFrameLayout();
-        layoutParameters(function.getScope(), function);
+        parameterBytes = 0;
+        localBytes = 0;
+        layoutParameters(function.getScope());
     }
 
     private void putFunctionLayout(FunctionEntry function) {
         metadata.putFunction(function, new VmMetadata.VmFunctionLayout(
                 functionLabel(function),
-                function.getParameterBytes(),
-                function.getLocalBytes(),
-                function.getFrameSizeBytes()));
+                parameterBytes,
+                localBytes,
+                localBytes));
     }
 
     private String functionLabel(FunctionEntry function) {
@@ -152,38 +150,42 @@ final class VmPreparationVisitor extends AstNodeVisitorBase {
         return "enum_" + entry.getName() + "_values";
     }
 
-    private void layoutParameters(FunctionScope functionScope, FunctionEntry function) {
+    private void layoutParameters(FunctionScope functionScope) {
         if (functionScope == null) {
             return;
         }
 
-        int parameterBytes = functionScope.getParameters().values().stream()
+        parameterBytes = functionScope.getParameters().values().stream()
                 .map(ParameterEntry::getType)
                 .mapToInt(VmLayout::stackBytes)
                 .sum();
-        function.setParameterBytes(parameterBytes);
 
         int offsetBytes = VmLayout.FRAME_HEADER_BYTES + parameterBytes;
         for (ParameterEntry parameter : functionScope.getParameters().values()) {
             int sizeBytes = VmLayout.stackBytes(parameter.getType());
             offsetBytes -= sizeBytes;
-            parameter.setSizeBytes(sizeBytes);
-            parameter.setOffsetBytes(offsetBytes);
+
             metadata.putStorage(parameter, new VmMetadata.VmStorageLayout(sizeBytes, offsetBytes));
         }
     }
 
-    private NewExpression.JaggedArrayTempLayout allocateJaggedArrayTempLayout(int dimensionCount) {
+    private VmMetadata.JaggedArrayTempLayout allocateJaggedArrayTempLayout(int dimensionCount) {
         int[] dimensionOffsets = allocateTempOffsets(dimensionCount);
         int[] baseOffsets = allocateTempOffsets(dimensionCount - 1);
         int[] indexOffsets = allocateTempOffsets(dimensionCount - 1);
-        return new NewExpression.JaggedArrayTempLayout(dimensionOffsets, baseOffsets, indexOffsets);
+        return new VmMetadata.JaggedArrayTempLayout(dimensionOffsets, baseOffsets, indexOffsets);
+    }
+
+    private int allocateLocalBytes(int sizeBytes) {
+        int offset = localBytes;
+        localBytes += sizeBytes;
+        return offset;
     }
 
     private int[] allocateTempOffsets(int count) {
         int[] offsets = new int[count];
         for (int i = 0; i < count; i++) {
-            offsets[i] = currentFunction.allocateLocalBytes(VmLayout.WORD_BYTES);
+            offsets[i] = allocateLocalBytes(VmLayout.WORD_BYTES);
         }
         return offsets;
     }

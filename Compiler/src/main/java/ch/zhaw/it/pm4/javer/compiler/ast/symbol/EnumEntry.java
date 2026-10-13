@@ -7,19 +7,10 @@ import ch.zhaw.it.pm4.javer.compiler.ast.scope.EnumScope;
  */
 public final class EnumEntry extends SymbolEntry {
 
-    private final String dataLabel;
-    private final int elementSizeBytes;
     private EnumScope scope;
-    private int sizeBytes;
 
     public EnumEntry(String name) {
-        this(name, "enum_" + name + "_values", 4);
-    }
-
-    public EnumEntry(String name, String dataLabel, int elementSizeBytes) {
         super(name);
-        this.dataLabel = dataLabel;
-        this.elementSizeBytes = elementSizeBytes;
     }
 
     public EnumScope getScope() {
@@ -30,19 +21,4 @@ public final class EnumEntry extends SymbolEntry {
         this.scope = scope;
     }
 
-    public String getDataLabel() {
-        return dataLabel;
-    }
-
-    public int getElementSizeBytes() {
-        return elementSizeBytes;
-    }
-
-    public int getSizeBytes() {
-        return sizeBytes;
-    }
-
-    public void setSizeBytes(int sizeBytes) {
-        this.sizeBytes = sizeBytes;
-    }
 }

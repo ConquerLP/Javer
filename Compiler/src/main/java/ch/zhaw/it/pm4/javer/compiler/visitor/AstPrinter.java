@@ -32,7 +32,6 @@ public class AstPrinter extends AstNodeVisitorBase {
     public static final String CONDITION = "condition";
     public static final String TARGET = "target";
     public static final String OPERATOR = "operator";
-    public static final String SIZE_BYTES = "sizeBytes";
 
     private final List<Boolean> isLastStack = new ArrayList<>();
     private Appendable output;
@@ -475,8 +474,6 @@ public class AstPrinter extends AstNodeVisitorBase {
             switch (entry) {
                 case StorageEntry storage -> {
                     children.add(childIsLast -> scalarChild("type", storage.getType(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild(SIZE_BYTES, storage.getSizeBytes(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("offsetBytes", storage.getOffsetBytes(), null, childIsLast));
                     if (entry instanceof VariableEntry variable) {
                         children.add(childIsLast -> scalarChild("hasExplicitInitializer", variable.hasExplicitInitializer(), null, childIsLast));
                         children.add(childIsLast -> scalarChild("defaultValue", quoteValue(variable.getDefaultValue()), null, childIsLast));
@@ -484,24 +481,16 @@ public class AstPrinter extends AstNodeVisitorBase {
                 }
                 case FunctionEntry function -> {
                     children.add(childIsLast -> scalarChild("returnType", function.getReturnType(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("label", quote(function.getLabel()), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("parameterBytes", function.getParameterBytes(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("localBytes", function.getLocalBytes(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("frameSizeBytes", function.getFrameSizeBytes(), null, childIsLast));
                     if (function.getScope() != null) {
                         children.add(childIsLast -> functionScopeChild(function.getScope(), childIsLast));
                     }
                 }
                 case StructEntry struct -> {
-                    children.add(childIsLast -> scalarChild(SIZE_BYTES, struct.getSizeBytes(), null, childIsLast));
                     if (hasStructScopeContent(struct.getScope())) {
                         children.add(childIsLast -> structScopeChild(struct.getScope(), childIsLast));
                     }
                 }
                 case EnumEntry enumEntry -> {
-                    children.add(childIsLast -> scalarChild("dataLabel", quote(enumEntry.getDataLabel()), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("elementSizeBytes", enumEntry.getElementSizeBytes(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild(SIZE_BYTES, enumEntry.getSizeBytes(), null, childIsLast));
                     if (hasEnumScopeContent(enumEntry.getScope())) {
                         children.add(childIsLast -> enumScopeChild(enumEntry.getScope(), childIsLast));
                     }
@@ -509,15 +498,6 @@ public class AstPrinter extends AstNodeVisitorBase {
                 case EnumValueEntry enumValue -> {
                     children.add(childIsLast -> scalarChild("ownerEnum", quote(enumValue.getOwnerEnum().getName()), null, childIsLast));
                     children.add(childIsLast -> scalarChild(VALUE, enumValue.getValue(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild(SIZE_BYTES, enumValue.getSizeBytes(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("offsetBytes", enumValue.getOffsetBytes(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild("dataLabel", quote(enumValue.getDataLabel()), null, childIsLast));
-                }
-                case LabelEntry label ->
-                        children.add(childIsLast -> scalarChild("label", quote(label.getLabel()), null, childIsLast));
-                case DataEntry dataEntry -> {
-                    children.add(childIsLast -> scalarChild("type", dataEntry.getType(), null, childIsLast));
-                    children.add(childIsLast -> scalarChild(VALUE, quoteValue(dataEntry.getValue()), null, childIsLast));
                 }
                 default -> throw new IllegalStateException("Invalid entry type " + entry.getClass());
             }

@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer.compiler.bytecode;
+package ch.zhaw.it.pm4.javer.compiler.codegen.vm;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;

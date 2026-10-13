@@ -6,6 +6,8 @@ import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StorageEntry;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.StructEntry;
 
+import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.NewExpression;
+import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
@@ -13,6 +15,47 @@ import java.util.Map;
  * VM-specific layout metadata produced before bytecode generation.
  */
 final class VmMetadata {
+
+    private final Map<NewExpression, JaggedArrayTempLayout> arrayTemps = new IdentityHashMap<>();
+
+    public void putArrayTemps(NewExpression node, JaggedArrayTempLayout layout) {
+        arrayTemps.put(node, layout);
+    }
+
+    public JaggedArrayTempLayout arrayTemps(NewExpression node) {
+        return arrayTemps.get(node);
+    }
+
+    public record JaggedArrayTempLayout(int[] dimensionOffsets, int[] baseOffsets, int[] indexOffsets) {
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof JaggedArrayTempLayout(int[] offsets, int[] baseOffsets1, int[] indexOffsets1)))
+                return false;
+
+            return Arrays.equals(dimensionOffsets, offsets)
+                    && Arrays.equals(baseOffsets, baseOffsets1)
+                    && Arrays.equals(indexOffsets, indexOffsets1);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Arrays.hashCode(dimensionOffsets);
+            result = 31 * result + Arrays.hashCode(baseOffsets);
+            result = 31 * result + Arrays.hashCode(indexOffsets);
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "JaggedArrayTempLayout{" +
+                    "dimensionOffsets=" + Arrays.toString(dimensionOffsets) +
+                    ", baseOffsets=" + Arrays.toString(baseOffsets) +
+                    ", indexOffsets=" + Arrays.toString(indexOffsets) +
+                    '}';
+        }
+    }
 
     private final Map<FunctionEntry, VmFunctionLayout> functions = new IdentityHashMap<>();
     private final Map<StorageEntry, VmStorageLayout> storage = new IdentityHashMap<>();

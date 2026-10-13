@@ -2,6 +2,10 @@ package ch.zhaw.it.pm4.javer.compiler.codegen.vm;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.PrimitiveTypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.VoidTypeInfo;
+import ch.zhaw.it.pm4.javer.compiler.ast.scope.FunctionScope;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.FunctionEntry;
+import ch.zhaw.it.pm4.javer.compiler.ast.symbol.ParameterEntry;
 
 /**
  * VM instruction mapping for semantic built-in functions.
@@ -30,6 +34,16 @@ enum VmBuiltInFunction {
             }
         }
         return null;
+    }
+
+    FunctionEntry createSymbol() {
+        FunctionEntry entry = new FunctionEntry(name);
+        entry.setReturnType(VoidTypeInfo.INSTANCE);
+        entry.setBuiltIn(true);
+        FunctionScope scope = new FunctionScope();
+        scope.defineParameter(new ParameterEntry("value", parameterType));
+        entry.setScope(scope);
+        return entry;
     }
 
     public TypeInfo parameterType() {

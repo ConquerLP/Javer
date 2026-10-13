@@ -14,10 +14,7 @@ import java.util.Map;
  */
 public final class SymbolTableAstPrinter extends AstPrinter {
 
-    public static final String SIZE_BYTES = "sizeBytes";
-    public static final String OFFSET_BYTES = "offsetBytes";
     public static final String NONE = "<none>";
-
 
     @Override
     protected void writeRoot(CompilationUnit node) {
@@ -33,11 +30,11 @@ public final class SymbolTableAstPrinter extends AstPrinter {
         List<Map.Entry<String, SymbolEntry>> entries = sortedEntries(globalScope.getAllEntries());
 
         List<List<String>> globalRows = new ArrayList<>();
-        globalRows.add(List.of("kind", "name", "type", "label", SIZE_BYTES));
+        globalRows.add(List.of("kind", "name", "type"));
         for (Map.Entry<String, SymbolEntry> entry : entries) {
             globalRows.add(globalRow(entry.getValue()));
         }
-        writeTable("table: global | scope offset: 0", globalRows);
+        writeTable("table: global", globalRows);
 
         for (Map.Entry<String, SymbolEntry> entry : entries) {
             SymbolEntry symbol = entry.getValue();
@@ -56,49 +53,43 @@ public final class SymbolTableAstPrinter extends AstPrinter {
             return List.of(
                     "func",
                     function.getName(),
-                    String.valueOf(function.getReturnType()),
-                    quote(function.getLabel()),
-                    String.valueOf(function.getFrameSizeBytes()));
+                    String.valueOf(function.getReturnType()));
         }
         if (entry instanceof StructEntry struct) {
-            return List.of("struct", struct.getName(), "struct", "", String.valueOf(struct.getSizeBytes()));
+            return List.of("struct", struct.getName(), "struct");
         }
         if (entry instanceof EnumEntry enumEntry) {
-            return List.of("enum", enumEntry.getName(), "enum", quote(enumEntry.getDataLabel()), String.valueOf(enumEntry.getSizeBytes()));
+            return List.of("enum", enumEntry.getName(), "enum");
         }
-        return List.of(entry.getClass().getSimpleName(), entry.getName(), "", "", "");
+        return List.of(entry.getClass().getSimpleName(), entry.getName(), "");
     }
 
     private void writeFunctionTable(FunctionEntry function) {
         FunctionScope scope = function.getScope();
         List<List<String>> rows = new ArrayList<>();
-        rows.add(List.of("section", "scope", "name", "type", SIZE_BYTES, OFFSET_BYTES, "details"));
+        rows.add(List.of("section", "scope", "name", "type", "details"));
 
         if (scope != null && !scope.getParameters().isEmpty()) {
             for (ParameterEntry parameter : scope.getParameters().values()) {
                 rows.add(storageRow("param", "function", parameter, parameterDetails(parameter)));
             }
         } else {
-            rows.add(List.of("params", "function", NONE, "", "", "", ""));
+            rows.add(List.of("params", "function", NONE, "", ""));
         }
 
         if (scope != null && scope.getRootBlock() != null) {
             collectBlockRows(scope.getRootBlock(), "<root>", new int[]{0}, rows);
         } else {
-            rows.add(List.of("blocks", NONE, "", "", "", "", ""));
+            rows.add(List.of("blocks", NONE, "", "", ""));
         }
 
         writeTable("table: function " + function.getName()
-                + " | return: " + function.getReturnType()
-                + " | label: " + quote(function.getLabel())
-                + " | parameter bytes: " + function.getParameterBytes()
-                + " | local bytes: " + function.getLocalBytes()
-                + " | frame bytes: " + function.getFrameSizeBytes(), rows);
+                + " | return: " + function.getReturnType(), rows);
     }
 
     private void collectBlockRows(BlockScope blockScope, String parentId, int[] nextBlockId, List<List<String>> rows) {
         String blockId = "#" + nextBlockId[0]++;
-        rows.add(List.of("block", blockId, "parent", parentId, "", "", "locals: " + blockScope.getVariables().size()));
+        rows.add(List.of("block", blockId, "parent", parentId, "locals: " + blockScope.getVariables().size()));
 
         for (VariableEntry variable : blockScope.getVariables().values()) {
             rows.add(storageRow("local", blockId, variable, variableDetails(variable)));
@@ -126,50 +117,41 @@ public final class SymbolTableAstPrinter extends AstPrinter {
                 scope,
                 storage.getName(),
                 String.valueOf(storage.getType()),
-                String.valueOf(storage.getSizeBytes()),
-                String.valueOf(storage.getOffsetBytes()),
                 details);
     }
 
     private void writeStructTable(StructEntry struct) {
         StructScope scope = struct.getScope();
         List<List<String>> rows = new ArrayList<>();
-        rows.add(List.of("kind", "name", "type", SIZE_BYTES, OFFSET_BYTES));
+        rows.add(List.of("kind", "name", "type"));
         if (scope == null || scope.getFields().isEmpty()) {
-            rows.add(List.of("field", NONE, "", "", ""));
+            rows.add(List.of("field", NONE, ""));
         } else {
             for (FieldEntry field : scope.getFields().values()) {
                 rows.add(List.of(
                         "field",
                         field.getName(),
-                        String.valueOf(field.getType()),
-                        String.valueOf(field.getSizeBytes()),
-                        String.valueOf(field.getOffsetBytes())));
+                        String.valueOf(field.getType())));
             }
         }
-        writeTable("table: struct " + struct.getName() + " | size bytes: " + struct.getSizeBytes(), rows);
+        writeTable("table: struct " + struct.getName(), rows);
     }
 
     private void writeEnumTable(EnumEntry enumEntry) {
         EnumScope scope = enumEntry.getScope();
         List<List<String>> rows = new ArrayList<>();
-        rows.add(List.of("kind", "name", VALUE, SIZE_BYTES, OFFSET_BYTES, "dataLabel"));
+        rows.add(List.of("kind", "name", VALUE));
         if (scope == null || scope.getValues().isEmpty()) {
-            rows.add(List.of(VALUE, NONE, "", "", "", quote(enumEntry.getDataLabel())));
+            rows.add(List.of(VALUE, NONE, ""));
         } else {
             for (EnumValueEntry value : scope.getValues().values()) {
                 rows.add(List.of(
                         VALUE,
                         value.getName(),
-                        String.valueOf(value.getValue()),
-                        String.valueOf(value.getSizeBytes()),
-                        String.valueOf(value.getOffsetBytes()),
-                        quote(value.getDataLabel())));
+                        String.valueOf(value.getValue())));
             }
         }
-        writeTable("table: enum " + enumEntry.getName()
-                + " | data label: " + quote(enumEntry.getDataLabel())
-                + " | element bytes: " + enumEntry.getElementSizeBytes(), rows);
+        writeTable("table: enum " + enumEntry.getName(), rows);
     }
 
     private void writeTable(String title, List<List<String>> rows) {

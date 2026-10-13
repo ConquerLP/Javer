@@ -21,7 +21,4 @@ public final class StructEntry extends SymbolEntry {
         this.scope = scope;
     }
 
-    public int getSizeBytes() {
-        return scope == null ? 0 : scope.getSizeBytes();
-    }
 }

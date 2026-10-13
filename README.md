@@ -58,10 +58,36 @@ Compiler options:
 ```text
 --in-file, -i
 --out-file, -o
+--target vm|fanuc-macro-b
 --dump-lexer
 --dump-ast
 --dump-symboltable
 ```
+
+The default target is `vm` (`.jbc`). `fanuc-macro-b` (`.nc`) is an empty
+backend placeholder and does not yet emit a program or provide built-in functions.
+
+## Compiler architecture
+
+`Compiler` selects the target and coordinates two stages:
+
+- `frontend.Frontend` performs lexing, parsing, symbol declaration, name
+  resolution, type checking, and semantic analysis. Its result is a checked AST.
+  AST nodes, symbols, and scopes contain semantic information only.
+  The language requires exactly one `fn void main()`; the frontend validates it.
+- `codegen.TargetBackend` supplies fresh built-in function signatures before
+  frontend analysis, then prepares target-specific state and creates the code
+  generator. Target preparation does not modify the semantic AST or symbols.
+
+The VM backend owns runtime functions, labels, data
+encoding, storage and frame layouts, and temporary array allocation slots.
+Each preparation creates fresh `VmMetadata`, including temporary slots keyed
+by AST node. VM symbol-table dumps read this metadata; the generic symbol-table
+printer displays semantic information without target layout fields.
+
+Additional backends implement `TargetBackend` and are selected through
+`CompilationTarget` and `TargetBackendFactory`. They consume the same frontend
+AST and keep their own preparation data and runtime function implementations.
 
 VM options:
 

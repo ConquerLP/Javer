@@ -14,12 +14,10 @@ public final class VariableEntry extends StorageEntry {
     public VariableEntry(
             String name,
             TypeInfo type,
-            int sizeBytes,
-            int offsetBytes,
             boolean hasExplicitInitializer,
             Object defaultValue,
             int declarationOrder) {
-        super(name, type, sizeBytes, offsetBytes);
+        super(name, type);
         this.hasExplicitInitializer = hasExplicitInitializer;
         this.defaultValue = defaultValue;
         this.declarationOrder = declarationOrder;

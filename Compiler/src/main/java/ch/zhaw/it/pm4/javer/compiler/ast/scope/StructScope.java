@@ -12,14 +12,12 @@ import java.util.Map;
 public final class StructScope {
 
     private final Map<String, FieldEntry> fields = new LinkedHashMap<>();
-    private int sizeBytes;
 
     public boolean defineField(FieldEntry entry) {
         if (fields.containsKey(entry.getName())) {
             return false;
         }
         fields.put(entry.getName(), entry);
-        sizeBytes += entry.getSizeBytes();
         return true;
     }
 
@@ -29,14 +27,6 @@ public final class StructScope {
 
     public Map<String, FieldEntry> getFields() {
         return fields;
-    }
-
-    public int getSizeBytes() {
-        return sizeBytes;
-    }
-
-    public void setSizeBytes(int sizeBytes) {
-        this.sizeBytes = sizeBytes;
     }
 
     public Map<String, SymbolEntry> getAllEntries() {

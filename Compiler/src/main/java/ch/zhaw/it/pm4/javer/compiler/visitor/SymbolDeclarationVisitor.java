@@ -10,10 +10,10 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.scope.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
-import ch.zhaw.it.pm4.javer.compiler.builtin.BuiltInFunction;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.Severity;
 
+import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -25,6 +25,7 @@ import java.util.function.Consumer;
 public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
 
     private final DiagnosticBag diagnosticBag;
+    private final List<FunctionEntry> builtInFunctions;
     private GlobalScope globalScope;
     private FunctionScope currentFunctionScope;
     private FunctionEntry currentFunction;
@@ -36,9 +37,11 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
      *
      * @param diagnosticBag collector for duplicate symbols and invalid
      *                      declarations
+     * @param builtInFunctions runtime signatures supplied by the selected backend
      */
-    public SymbolDeclarationVisitor(DiagnosticBag diagnosticBag) {
+    public SymbolDeclarationVisitor(DiagnosticBag diagnosticBag, List<FunctionEntry> builtInFunctions) {
         this.diagnosticBag = diagnosticBag;
+        this.builtInFunctions = List.copyOf(builtInFunctions);
     }
 
     private static Object defaultValueOf(TypeInfo type) {
@@ -53,7 +56,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             registerTopLevelDeclaration(declaration);
         }
-        validateMainFunction(node);
         for (DeclarationAstNode declaration : node.getDeclarations()) {
             if (declaration instanceof EnumDeclaration || declaration instanceof StructDeclaration) {
                 declaration.accept(this);
@@ -67,8 +69,8 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
     }
 
     private void registerBuiltInFunctions() {
-        for (BuiltInFunction builtIn : BuiltInFunction.all()) {
-            globalScope.defineFunction(builtIn.createSymbol());
+        for (FunctionEntry builtIn : builtInFunctions) {
+            globalScope.defineFunction(builtIn);
         }
     }
 
@@ -80,7 +82,7 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             function.setSymbolEntry(entry);
             function.setFunctionScope(scope);
             if (!globalScope.defineFunction(entry)) {
-                String message = BuiltInFunction.find(function.getName()) != null
+                String message = globalScope.resolveFunction(function.getName()).isBuiltIn()
                         ? "Built-in function cannot be overwritten: " + function.getName()
                         : "Duplicate function: " + function.getName();
                 diagnosticBag.add(function.getSourceRange().start(), Severity.ERROR, message);
@@ -112,29 +114,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         }
     }
 
-    private void validateMainFunction(CompilationUnit node) {
-        int mainCount = 0;
-        FunctionDeclaration mainDeclaration = null;
-        for (DeclarationAstNode declaration : node.getDeclarations()) {
-            if (declaration instanceof FunctionDeclaration function && "main".equals(function.getName())) {
-                mainCount++;
-                mainDeclaration = function;
-            }
-        }
-
-        if (mainCount != 1) {
-            diagnosticBag.add(node.getSourceRange().start(), Severity.ERROR,
-                    "Program must declare exactly one main function with signature: fn void main().");
-            return;
-        }
-
-        TypeInfo returnType = resolveType(mainDeclaration.getReturnType());
-        if (!(returnType instanceof VoidTypeInfo) || !mainDeclaration.getParameters().isEmpty()) {
-            diagnosticBag.add(mainDeclaration.getSourceRange().start(), Severity.ERROR,
-                    "Main signature must be exactly: fn void main().");
-        }
-    }
-
     @Override
     public void visit(EnumDeclaration node) {
         EnumEntry entry = node.getSymbolEntry();
@@ -154,10 +133,7 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             EnumValueEntry valueEntry = new EnumValueEntry(
                     item.getName(),
                     entry,
-                    value,
-                    0,
-                    0,
-                    entry.getDataLabel());
+                    value);
 
             if (!scope.defineEnumValue(valueEntry)) {
                 diagnosticBag.add(item.getSourceRange().start(), Severity.ERROR, "Duplicate enum item: " + item.getName());
@@ -203,8 +179,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
             ParameterEntry entry = new ParameterEntry(
                     parameter.getName(),
                     type,
-                    0,
-                    0,
                     validVariadic,
                     validVariadic ? elementType : null);
             if (validVariadic) {
@@ -223,7 +197,7 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
 
         for (StructField field : node.getFields()) {
             TypeInfo type = resolveType(field.getType());
-            FieldEntry entry = new FieldEntry(field.getName(), type, 0, 0);
+            FieldEntry entry = new FieldEntry(field.getName(), type);
 
             if (!structScope.defineField(entry)) {
                 diagnosticBag.add(field.getSourceRange().start(), Severity.ERROR, "Duplicate field: " + field.getName());
@@ -278,8 +252,6 @@ public class SymbolDeclarationVisitor extends AstNodeVisitorBase {
         VariableEntry entry = new VariableEntry(
                 node.getName(),
                 type,
-                0,
-                0,
                 node.getInitializer() != null,
                 defaultValueOf(type),
                 nextVariableDeclarationOrder++);

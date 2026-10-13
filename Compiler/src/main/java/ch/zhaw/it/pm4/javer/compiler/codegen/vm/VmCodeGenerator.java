@@ -11,7 +11,6 @@ import ch.zhaw.it.pm4.javer.compiler.ast.nodes.statement.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.nodes.type.PrimitiveTypeKind;
 import ch.zhaw.it.pm4.javer.compiler.ast.symbol.*;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.*;
-import ch.zhaw.it.pm4.javer.compiler.bytecode.VmLayout;
 import ch.zhaw.it.pm4.javer.compiler.codegen.TextCodeGenerator;
 import ch.zhaw.it.pm4.javer.compiler.misc.diagnostics.DiagnosticBag;
 
@@ -696,7 +695,7 @@ public class VmCodeGenerator extends TextCodeGenerator {
         emitArrayAllocation(node.getDimensions(), init, elementSize);
 
         if (init != null) {
-            DataEntry template = dataSection.addArrayTemplate(elementType, arrayTemplateValues(init.getElements(), elementType));
+            VmDataEntry template = dataSection.addArrayTemplate(elementType, arrayTemplateValues(init.getElements(), elementType));
             emitDup(PrimitiveTypeInfo.INT);
             emitArrayPayloadOffset();
             writeLine(PUSHR + template.getLabel());
@@ -711,7 +710,7 @@ public class VmCodeGenerator extends TextCodeGenerator {
         ArrayTypeInfo arrayType = (ArrayTypeInfo) node.getResultingType();
         TypeInfo elementType = arrayType.elementType();
         int elementSize = memoryBytes(elementType);
-        DataEntry template = dataSection.addArrayTemplate(elementType, arrayTemplateValues(node.getElements(), elementType));
+        VmDataEntry template = dataSection.addArrayTemplate(elementType, arrayTemplateValues(node.getElements(), elementType));
         writeLine(PUSHI + node.getElements().size());
         writeLine(NEWA + elementSize);
         emitDup(PrimitiveTypeInfo.INT);
@@ -747,7 +746,7 @@ public class VmCodeGenerator extends TextCodeGenerator {
     }
 
     private void emitJaggedArrayAllocation(NewExpression node, TypeInfo leafType) {
-        NewExpression.JaggedArrayTempLayout temps = node.getJaggedArrayTempLayout();
+        VmMetadata.JaggedArrayTempLayout temps = metadata.arrayTemps(node);
         if (temps == null) {
             throw new IllegalStateException("Missing temporary storage for jagged array allocation.");
         }
@@ -765,7 +764,7 @@ public class VmCodeGenerator extends TextCodeGenerator {
             int depth,
             int dimensionCount,
             TypeInfo leafType,
-            NewExpression.JaggedArrayTempLayout temps) {
+            VmMetadata.JaggedArrayTempLayout temps) {
         int elementSize = depth + 1 == dimensionCount ? memoryBytes(leafType) : VmLayout.WORD_BYTES;
         if (depth + 1 == dimensionCount) {
             emitLoadTemp(temps.dimensionOffsets()[depth]);

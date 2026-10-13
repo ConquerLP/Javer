@@ -1,4 +1,4 @@
-package ch.zhaw.it.pm4.javer.compiler.ast.symbol;
+package ch.zhaw.it.pm4.javer.compiler.codegen.vm;
 
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.TypeInfo;
 import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
@@ -6,23 +6,24 @@ import ch.zhaw.it.pm4.javer.compiler.ast.typeinfo.UnknownTypeInfo;
 import java.util.List;
 
 /**
- * Symbol table entry for a static data constant.
+ * A static data constant encoded for VM output.
  */
-public final class DataEntry extends SymbolEntry {
+public final class VmDataEntry  {
 
+    private final String label;
     private final TypeInfo type;
     private final Object value;
     private final int elementSizeBytes;
 
-    public DataEntry(String label, TypeInfo type, Object value, int elementSizeBytes) {
-        super(label);
+    public VmDataEntry(String label, TypeInfo type, Object value, int elementSizeBytes) {
+        this.label = label;
         this.type = type == null ? UnknownTypeInfo.INSTANCE : type;
         this.value = value;
         this.elementSizeBytes = Math.max(elementSizeBytes, 1);
     }
 
     public String getLabel() {
-        return getName();
+        return label;
     }
 
     public TypeInfo getType() {
