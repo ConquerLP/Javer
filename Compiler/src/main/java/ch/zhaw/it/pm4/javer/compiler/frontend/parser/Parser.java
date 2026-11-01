@@ -998,7 +998,7 @@ public class Parser {
 
     private LiteralExpression<Boolean> parseBooleanLiteral() {
         Token token = expectTokenType(TokenType.LITERAL_BOOLEAN);
-        return located(new LiteralExpression<>(LiteralKind.BOOLEAN, Boolean.parseBoolean(token.getValue())), token);
+        return located(new LiteralExpression<>(LiteralKind.BOOLEAN, "win".equals(token.getValue())), token);
     }
 
     private LiteralExpression<String> parseStringLiteral() {

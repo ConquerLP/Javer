@@ -1,3 +1,13 @@
-fn void main() {
-    call prints("Test");
+honig void main() {
+
+    forever(honey int i = 0; i < 10; i++) {
+        bss prints("bss");
+        bss printi(i + 1);
+        bss prints("\n");
+        bss wait();
+    }
+}
+
+honig void wait() {
+    forever(honey int i = 0; i < 1000*1000; i++) {}
 }

@@ -496,7 +496,7 @@ public class Lexer {
      * keywords.
      * If it does, it will return a keyword token; otherwise, it will return
      * an identifier token.
-     * The literals {@code true}, {@code false} and {@code null} are
+     * The literals {@code win}, {@code lose} and {@code bruh} are
      * recognised here and emitted as LITERAL_BOOLEAN / LITERAL_NULL.
      */
     private Token lexIdentifierOrKeyword() {
