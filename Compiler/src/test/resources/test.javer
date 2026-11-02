@@ -1,30 +1,266 @@
 fn void main() {
-    call moveFast(0, 0, 0);
-    let struct Point[] points = new struct Point[3];
-    points[0] = call initPoint(0, 0);
-    points[1] = call initPoint(10, 20);
-    points[2] = call initPoint(30, 40);
+    call moveFast(0, 0, 10);
+    let struct Point center = call Point_init(20, 0, 0);
+    let struct Keyhole keyhole = call Keyhole_init(center, 50, 20, 20, 0);
 
-    for(let int i = 0; i < points.length; i++) {
-        call makeCircle(points[i], 10);
+    let struct CuttingConfig config = call CuttingConfig_init(
+        500, 200, 100, 2, 5, 0, 0.1, 0.1, 2);
+    call Keyhole_cut(keyhole, config);
+}
+
+struct CuttingConfig {
+    int feed;
+    int plungeFeed;
+    int finishFeed;
+    double radialCuttingDepth;
+    double depthCuttingDepth;
+    double depthCuttingDepthLayered;
+    double radialFinishExtra;
+    double depthFinishExtra;
+    double safetyDistance;
+}
+
+fn struct CuttingConfig CuttingConfig_init(int feed,
+                    int plungeFeed,
+                    int finishFeed,
+                    double radialCuttingDepth,
+                    double depthCuttingDepth,
+                    double depthCuttingDepthLayered,
+                    double radialFinishExtra,
+                    double depthFinishExtra,
+                    double safetyDistance) {
+    let struct CuttingConfig c = new struct CuttingConfig;
+    c.feed = feed;
+    c.plungeFeed = plungeFeed;
+    c.finishFeed = finishFeed;
+    c.radialCuttingDepth = radialCuttingDepth;
+    c.depthCuttingDepth = depthCuttingDepth;
+    c.depthCuttingDepthLayered = depthCuttingDepthLayered;
+    c.radialFinishExtra = radialFinishExtra;
+    c.depthFinishExtra = depthFinishExtra;
+    c.safetyDistance = safetyDistance;
+    return c;
+}
+
+struct Keyhole {
+    struct Point center;
+    double length;
+    double width;
+    double depth;
+    double orientationDeg;
+}
+
+fn struct Keyhole Keyhole_init(struct Point center, double length, double width, double depth, double orientationDeg) {
+    let struct Keyhole k = new struct Keyhole;
+    k.center = center;
+    k.length = length;
+    k.width = width;
+    k.depth = depth;
+    k.orientationDeg = orientationDeg;
+    return k;
+}
+
+fn void Keyhole_cut(struct Keyhole k, struct CuttingConfig c) {
+    let struct Point center = new struct Point;
+    center.x = k.center.x;
+    center.y = k.center.y;
+    center.z = k.center.z + c.safetyDistance;
+    call moveToPointFast(center);
+
+    let struct Point p1 = new struct Point;
+    let struct Point p2 = new struct Point;
+    p1.x = k.center.x + k.length / 2.0;
+    p2.x = k.center.x - k.length / 2.0;
+    p1.y = k.center.y;
+    p2.y = k.center.y;
+    p1.z = center.z;
+    p2.z = k.center.z;
+
+    let double depthCount = call abs((center.z - k.depth) + c.depthFinishExtra) / c.depthCuttingDepth;
+    call moveToPointFast(p1);
+    p2.z -= c.depthCuttingDepth;
+
+    for(let int i = 0; i < cast (int) depthCount; i++) {
+        call moveToPointLinear(p2, c.plungeFeed);
+        p1.z = p2.z - c.depthCuttingDepth;
+        call moveToPointLinear(p1, c.plungeFeed);
+        p2.z -= c.depthCuttingDepth;
     }
 
+    p2.z += c.depthCuttingDepth;
+
+    if(p2.z > (center.z - k.depth) + c.depthFinishExtra) {
+        p1.z = k.center.z - k.depth + c.depthFinishExtra;
+        call moveToPointLinear(p1, c.plungeFeed);
+        p2.z = k.center.z - k.depth + c.depthFinishExtra;
+        call moveToPointLinear(p2, c.plungeFeed);
+    } else {
+        call moveToPointLinear(p2, c.plungeFeed);
+    }
+
+    call moveToPointFast(center);
+
+    let struct Point p3 = new struct Point;
+    p1.x = k.center.x + k.width / 2.0;
+    p2.x = k.center.x - k.width / 2.0;
+    p1.y = k.center.y;
+    p2.y = k.center.y;
+    p1.z = k.center.z - k.depth;
+    p2.z = k.center.z - k.depth;
+
+    call moveToPointLinear(p1, c.finishFeed);
+
+    p3.x = k.center.x;
+    p3.y = k.center.y + k.width / 2.0;
+    p3.z = k.center.z - k.depth;
+    let enum Direction cw = CW;
+    let enum Direction ccw = CCW;
+    let double radius = k.width / 2.0;
+    let double depth = k.center.z - k.depth;
+    call moveToPointCircular(p3, radius, c.finishFeed, ccw);
+    let struct Point pp1 = call Point_init(
+        k.center.x - k.length / 2.0 + radius,
+        k.center.y + radius,
+        depth);
+    let struct Point pp2 = call Point_init(
+        k.center.x - k.length / 2.0 + radius,
+        k.center.y - radius,
+        depth);
+    let struct Point pp3 = call Point_init(
+        k.center.x + k.length / 2.0 - radius,
+        k.center.y - radius,
+        depth);
+    let struct Point pp4 = call Point_init(
+        k.center.x + k.length / 2.0 - radius,
+        k.center.y + radius,
+        depth);
+    call moveToPointLinear(pp1, c.finishFeed);
+    call moveToPointCircular(pp2, radius, c.finishFeed, ccw);
+    call moveToPointLinear(pp3, c.finishFeed);
+    call moveToPointCircular(pp4, radius, c.finishFeed, ccw);
+    call moveToPointLinear(p3, c.finishFeed);
+    call moveToPointCircular(p2, radius, c.finishFeed, ccw);
+
+    call moveToPointFast(center);
 }
 
 struct Point {
     double x;
     double y;
+    double z;
 }
 
-fn void makeCircle(struct Point p, double r) {
-    call moveFast(p.x, p.y + r, 0);
-    call moveCircleCW(p.x, p.y - r, 0, r, 100);
-    call moveCircleCW(p.x, p.y + r, 0, r, 100);
-}
-
-fn struct Point initPoint(double x, double y) {
+fn struct Point Point_init(double x, double y, double z) {
     let struct Point p = new struct Point;
     p.x = x;
     p.y = y;
+    p.z = z;
     return p;
+}
+
+struct Segment {
+    double x;
+    double y;
+    double z;
+}
+
+fn struct Segment Segment_init(double x, double y, double z) {
+    let struct Segment s = new struct Segment;
+    s.x = x;
+    s.y = y;
+    s.z = z;
+    return s;
+}
+
+struct Arc {
+    double x;
+    double y;
+    double z;
+    double r;
+}
+
+fn struct Arc Arc_init(double x, double y, double z, double r) {
+    let struct Arc a = new struct Arc;
+    a.x = x;
+    a.y = y;
+    a.z = z;
+    a.r = r;
+    return a;
+}
+
+fn void moveToPointFast(struct Point p) {
+    call moveFast(p.x, p.y, p.z);
+}
+
+fn void moveToPointLinear(struct Point p, int feed) {
+    call moveLinear(p.x, p.y, p.z, feed);
+}
+
+fn void moveToPointCircular(struct Point p, double r, int feed, enum Direction d) {
+    switch(d) {
+        case Direction.CW: {
+            call moveCircleCW(p.x, p.y, p.z, r, feed);
+        }
+        case Direction.CCW: {
+            call moveCircleCCW(p.x, p.y, p.z, r, feed);
+        }
+    }
+}
+
+enum Direction {
+    CW, CCW
+}
+
+fn double abs(double value) {
+    return value >= 0.0 ? value : -value;
+}
+
+fn void moveFast(double x, double y, double z) {
+    call prints("G0 X");
+    call printd(x);
+    call prints(" Y");
+    call printd(y);
+    call prints(" Z");
+    call printd(z);
+    call prints("\n");
+}
+
+fn void moveLinear(double x, double y, double z, int feed) {
+    call prints("G1 X");
+    call printd(x);
+    call prints(" Y");
+    call printd(y);
+    call prints(" Z");
+    call printd(z);
+    call prints(" F");
+    call printi(feed);
+    call prints("\n");
+}
+
+fn void moveCircleCW(double x, double y, double z, double r, int feed) {
+    call prints("G2 X");
+    call printd(x);
+    call prints(" Y");
+    call printd(y);
+    call prints(" Z");
+    call printd(z);
+    call prints(" R");
+    call printd(r);
+    call prints(" F");
+    call printi(feed);
+    call prints("\n");
+}
+
+fn void moveCircleCCW(double x, double y, double z, double r, int feed) {
+    call prints("G3 X");
+    call printd(x);
+    call prints(" Y");
+    call printd(y);
+    call prints(" Z");
+    call printd(z);
+    call prints(" R");
+    call printd(r);
+    call prints(" F");
+    call printi(feed);
+    call prints("\n");
 }
