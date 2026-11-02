@@ -22,7 +22,8 @@ final class FanucDataSection {
         for (var expression : array.elements()) {
             Object value = constant(expression);
             if (value == null) return Optional.empty();
-            elements.add(value instanceof Boolean b ? (b ? "1" : "0") : value.toString());
+            elements.add(value instanceof Float f ? FanucNumbers.format(f)
+                    : value instanceof Boolean b ? (b ? "1" : "0") : value.toString());
         }
         String label = "array_template_" + values.size();
         values.put(label, elements);

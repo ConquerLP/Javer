@@ -46,11 +46,11 @@ final class FanucEmitter {
     }
 
     private void set(int r, String v) {
-        line("#" + r + " = [" + v + "]");
+        line("#" + r + " = " + v);
     }
 
     private void set(int r, String v, String comment) {
-        line("#" + r + " = [" + v + "]" + " (" + comment + ")");
+        line("#" + r + " = " + v + " (" + comment + ")");
     }
 
     private String mem(String a) {
@@ -102,13 +102,22 @@ final class FanucEmitter {
         set(register, "#106");
     }
 
+    private String remainder(String dividend, String divisor) {
+        String a = groupedOperand(dividend), b = groupedOperand(divisor);
+        return a + " - [FIX[" + a + " / " + b + "] * " + b + "]";
+    }
+
+    private String groupedOperand(String expression) {
+        return expression.matches("#[0-9]+|[+-]?[0-9]+(?:\\.[0-9]+)?") ? expression : "[" + expression + "]";
+    }
+
     private void wrap() {
-        set(107, "#107 MOD 65536");
+        set(107, remainder("#107", "65536"));
         set(107, "#107 + [#107 LT 0] * 65536");
         set(107, "#107 - [#107 GE 32768] * 65536");
     }
 
-    private void trunc() { set(107, "#107 - [#107 MOD 1]"); }
+    private void trunc() { set(107, "FIX[#107]"); }
 
     private void finite() { helper(Helper.FINITE); }
 
@@ -188,7 +197,7 @@ final class FanucEmitter {
         set(110, "#110 + 1");
         jump(loop);
         mark(done);
-        if (array) line(mem("#109") + " = [#108 - 1]");
+        if (array) line(mem("#109") + " = #108 - 1");
         push("#109");
     }
 
@@ -292,7 +301,7 @@ final class FanucEmitter {
             }
             case "UNSIGNED" -> {
                 pop(107);
-                set(107, "#107 MOD 65536");
+                set(107, remainder("#107", "65536"));
                 set(107, "#107 + [#107 LT 0] * 65536");
                 push("#107");
             }
@@ -406,8 +415,49 @@ final class FanucEmitter {
                         + " 0] * [" + parameter(0) + " - " + reg(routine.returnRegister()) + "]");
                 line("GOTO #116");
             }
+            case SIN, COS, TAN, SQRT, ABS, FIX, FUP, ASIN, ACOS, ATAN, LN, EXP -> mathBuiltin(routine);
+            case MOVEFAST, MOVELINEAR, MOVECIRCLECW, MOVECIRCLECCW -> movementBuiltin(routine);
             case LOCAL, ENTER -> body(routine.name() + ", " + parameter(0));
             default -> body(routine.name());
+        }
+    }
+
+    private void mathBuiltin(FanucRoutine routine) {
+        pop(107);
+        finite();
+        switch (routine) {
+            case SQRT -> check("#107 LT 0", 10);
+            case LN -> check("#107 LE 0", 10);
+            case ASIN, ACOS -> check("[#107 LT -1] OR [#107 GT 1]", 10);
+            default -> { }
+        }
+        set(107, routine.name() + "[#107]");
+        finite();
+        push("#107");
+    }
+
+    private void movementBuiltin(FanucRoutine routine) {
+        boolean arc = routine == FanucRoutine.MOVECIRCLECW || routine == FanucRoutine.MOVECIRCLECCW;
+        int count = arc ? 5 : routine == FanucRoutine.MOVELINEAR ? 4 : 3;
+        // Values evaluate left to right and are popped into X,Y,Z,radius/feed slots in reverse order.
+        for (int i = count - 1; i >= 0; i--) pop(107 + i);
+        set(112, "#107");
+        finite();
+        for (int i = 1; i < count; i++) {
+            set(107, reg(107 + i));
+            finite();
+        }
+        set(107, "#112");
+        if (arc) {
+            check("#110 EQ 0", 11);
+            check("#111 LE 0", 11);
+            line("G17 G90 " + (routine == FanucRoutine.MOVECIRCLECW ? "G2" : "G3")
+                    + " X#107 Y#108 Z#109 R#110 F#111");
+        } else if (routine == FanucRoutine.MOVELINEAR) {
+            check("#110 LE 0", 11);
+            line("G90 G1 X#107 Y#108 Z#109 F#110");
+        } else {
+            line("G90 G0 X#107 Y#108 Z#109");
         }
     }
 
@@ -434,7 +484,8 @@ final class FanucEmitter {
                     set(100, "#100 - 1");
                     set(106, mem("#100"));
                 }
-                case FINITE -> inlineCheck("[#107 NE #107] OR [#107 GT 3.4028234663852886E38] OR [#107 LT -3.4028234663852886E38]", 2);
+                case FINITE -> inlineCheck("[#107 NE #107] OR [#107 GT " + FanucNumbers.MAX_FLOAT
+                        + "] OR [#107 LT -" + FanucNumbers.MAX_FLOAT + "]", 2);
                 case ACCESS -> accessHelper();
             }
             line("GOTO #117");
@@ -477,14 +528,16 @@ final class FanucEmitter {
                     // Base-256 limbs keep every product and sum exactly representable in Float32.
                     set(109, "#107 + [#107 LT 0] * 65536");
                     set(110, "#108 + [#108 LT 0] * 65536");
-                    set(111, "#109 MOD 256");
-                    set(112, "#110 MOD 256");
-                    set(107, "#111 * #112 + [[[[#109 - #111] / 256] * #112 + [[#110 - #112] / 256] * #111] MOD 256] * 256");
+                    set(111, remainder("#109", "256"));
+                    set(112, remainder("#110", "256"));
+                    set(113, "[[#109 - #111] / 256] * #112 + [[#110 - #112] / 256] * #111");
+                    set(113, remainder("#113", "256"));
+                    set(107, "#111 * #112 + #113 * 256");
                 } else set(107, "#107 * #108");
             }
             case "DIV", "MOD" -> {
                 check("#108 EQ 0", 1);
-                set(107, "#107 " + (kind.equals("MOD") ? "MOD" : "/") + " #108");
+                set(107, kind.equals("MOD") ? remainder("#107", "#108") : "#107 / #108");
                 if (integer && kind.equals("DIV")) trunc();
             }
             case "AND", "OR", "XOR" -> {
@@ -493,7 +546,7 @@ final class FanucEmitter {
                 set(107, "#107 " + kind + " #108");
             }
             case "SHL", "SHR" -> {
-                set(108, "#108 MOD 32");
+                set(108, remainder("#108", "32"));
                 set(108, "#108 + [#108 LT 0] * 32");
                 int loop = fresh(), body = fresh(), done = fresh();
                 mark(loop);
@@ -503,7 +556,7 @@ final class FanucEmitter {
                     set(107, "#107 * 2");
                     wrap();
                 } else {
-                    set(109, "#107 MOD 2");
+                    set(109, remainder("#107", "2"));
                     set(107, "[#107 - #109] / 2 - [#109 LT 0]");
                 }
                 set(108, "#108 - 1");

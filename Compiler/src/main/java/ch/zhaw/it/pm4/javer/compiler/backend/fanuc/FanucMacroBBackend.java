@@ -2,6 +2,7 @@ package ch.zhaw.it.pm4.javer.compiler.backend.fanuc;
 
 import ch.zhaw.it.pm4.javer.compiler.backend.*;
 import ch.zhaw.it.pm4.javer.compiler.ir.*;
+import ch.zhaw.it.pm4.javer.compiler.frontend.BuiltInSignature;
 import ch.zhaw.it.pm4.javer.compiler.diagnostics.*;
 import ch.zhaw.it.pm4.javer.compiler.source.SourceRange;
 
@@ -11,6 +12,11 @@ import java.util.*;
  * Target-specific validation and register layout; the VM language contract stays unchanged.
  */
 public final class FanucMacroBBackend extends TargetBackend {
+    @Override
+    public List<BuiltInSignature> builtInSignatures() {
+        return Arrays.stream(FanucBuiltInFunction.values()).map(FanucBuiltInFunction::signature).toList();
+    }
+
     private void validateType(Ir.Type type, SourceRange source, DiagnosticBag diagnostics) {
         if (type.kind() == Ir.Kind.CHAR || type.kind() == Ir.Kind.STRING)
             diagnostics.add(source.start(), Severity.ERROR, "FANUC does not support " + type.kind() + ".");
@@ -20,6 +26,11 @@ public final class FanucMacroBBackend extends TargetBackend {
     @Override
     protected void validate(Ir.Program program, DiagnosticBag diagnostics) {
         for (var signature : program.signatures()) {
+            if (signature.builtIn()) {
+                var implementation = FanucBuiltInFunction.find(signature.name());
+                if (implementation == null || !implementation.matches(signature))
+                    diagnostics.add(null, Severity.ERROR, "FANUC builtin not supported: " + signature.name());
+            }
             validateType(signature.returnType(), SourceRange.UNKNOWN, diagnostics);
             signature.parameters().forEach(t -> validateType(t, SourceRange.UNKNOWN, diagnostics));
         }

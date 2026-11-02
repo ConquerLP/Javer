@@ -1,5 +1,30 @@
 fn void main() {
-    let int a = 3;
-    let int b = 6;
-    let int c = a + b;
+    call moveFast(0, 0, 0);
+    let struct Point[] points = new struct Point[3];
+    points[0] = call initPoint(0, 0);
+    points[1] = call initPoint(10, 20);
+    points[2] = call initPoint(30, 40);
+
+    for(let int i = 0; i < points.length; i++) {
+        call makeCircle(points[i], 10);
+    }
+
+}
+
+struct Point {
+    double x;
+    double y;
+}
+
+fn void makeCircle(struct Point p, double r) {
+    call moveFast(p.x, p.y + r, 0);
+    call moveCircleCW(p.x, p.y - r, 0, r, 100);
+    call moveCircleCW(p.x, p.y + r, 0, r, 100);
+}
+
+fn struct Point initPoint(double x, double y) {
+    let struct Point p = new struct Point;
+    p.x = x;
+    p.y = y;
+    return p;
 }

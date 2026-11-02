@@ -2,7 +2,7 @@ package ch.zhaw.it.pm4.javer.compiler.backend.fanuc;
 
 /** Shared ABI for sequential, non-nesting instruction routines. */
 enum FanucRoutine {
-    PUSH, POP, LOCAL, ENTER, DUP, LOAD, STORE, AADD, FIELD, JUMPF, JUMPT, CALL, RET, NEW, NEWA, MEMCPY, BOUNDS, SIGNED, UNSIGNED, D2I, INEG, DNEG, IINV, IADD, ISUB, IMUL, IDIV, IMOD, IAND, IOR, IXOR, ISHL, ISHR, IEQ, INE, ILT, ILE, IGT, IGE, DADD, DSUB, DMUL, DDIV, DEQ, DNE, DLT, DLE, DGT, DGE;
+    PUSH, POP, LOCAL, ENTER, DUP, LOAD, STORE, AADD, FIELD, JUMPF, JUMPT, CALL, RET, NEW, NEWA, MEMCPY, BOUNDS, SIGNED, UNSIGNED, D2I, INEG, DNEG, IINV, IADD, ISUB, IMUL, IDIV, IMOD, IAND, IOR, IXOR, ISHL, ISHR, IEQ, INE, ILT, ILE, IGT, IGE, DADD, DSUB, DMUL, DDIV, DEQ, DNE, DLT, DLE, DGT, DGE, SIN, COS, TAN, SQRT, ABS, FIX, FUP, ASIN, ACOS, ATAN, LN, EXP, MOVEFAST, MOVELINEAR, MOVECIRCLECW, MOVECIRCLECCW;
 
     int parameter(int index) { return 104 + index; }
     int local(int index) { return 107 + index; }

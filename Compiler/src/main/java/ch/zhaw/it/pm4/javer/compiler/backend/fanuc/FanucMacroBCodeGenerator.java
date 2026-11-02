@@ -221,8 +221,14 @@ final class FanucMacroBCodeGenerator extends TextCodeGenerator {
             case Ir.Call call -> {
                 Ir.Signature signature = signatures.get(call.functionId());
                 call.arguments().forEach(this::expression);
-                FanucMetadata.FunctionLayout function = metadata.function(call.functionId());
-                line("CALL, " + function.label() + ", " + function.parameterCells());
+                if (signature.builtIn()) {
+                    var builtin = FanucBuiltInFunction.find(signature.name());
+                    require(builtin != null, call.source(), "Unknown FANUC builtin " + signature.name());
+                    line(builtin.name());
+                } else {
+                    FanucMetadata.FunctionLayout function = metadata.function(call.functionId());
+                    line("CALL, " + function.label() + ", " + function.parameterCells());
+                }
             }
             case Ir.ArrayNew array -> array(array);
             case Ir.StructNew allocation -> {
@@ -402,7 +408,7 @@ final class FanucMacroBCodeGenerator extends TextCodeGenerator {
             return;
         }
         switch (value.type().kind()) {
-            case DOUBLE -> line("PUSHD, " + Float.toString(((Double) value.value()).floatValue()));
+            case DOUBLE -> line("PUSHD, " + FanucNumbers.format(((Double) value.value()).floatValue()));
             case STRING -> throw new CompilerInvariantException(value.source(), "Strings are unsupported");
             case BOOL -> line("PUSHI, " + (Boolean.TRUE.equals(value.value()) ? 1 : 0));
             case CHAR -> line("PUSHI, " + (int) (Character) value.value());
