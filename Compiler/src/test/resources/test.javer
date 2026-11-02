@@ -1,3 +1,5 @@
 fn void main() {
-    call prints("Test");
+    let int a = 3;
+    let int b = 6;
+    let int c = a + b;
 }
