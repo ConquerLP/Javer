@@ -58,7 +58,7 @@ Compiler options:
 ```text
 --in-file, -i
 --out-file, -o
---target vm|fanuc-macro-b
+--target vm|project-x|fanuc-macro-b
 --dump-lexer
 --dump-ast
 --dump-ir
@@ -139,3 +139,7 @@ compiler/
 `source` contains source text and positions; `diagnostics` contains error
 collection and reporting. `io` publishes completed artifacts. Frontend analysis
 does not depend on backend implementation packages.
+
+## Project-X SPS target
+
+Use --target project-x to emit extended VM code (.jbc). See [instruction contract](docs/project-x.md) and [example](examples/project-x.javer). The SPS runtime is implemented separately.

@@ -193,7 +193,7 @@ public class CompilerOptions {
 
     public static String usage() {
         return "Usage: compiler --in-file <source.javer> --out-file <output-path-without-extension> "
-                + "[--target vm|fanuc-macro-b] [--dump-lexer] [--dump-ast] [--dump-ir] [--dump-symboltable]";
+                + "[--target vm|project-x|fanuc-macro-b] [--dump-lexer] [--dump-ast] [--dump-ir] [--dump-symboltable]";
     }
 
     public static class CompilerOptionException extends IllegalArgumentException {

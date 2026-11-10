@@ -5,6 +5,7 @@ package ch.zhaw.it.pm4.javer.compiler;
  */
 public enum CompilationTarget {
     VM("vm", ".jbc"),
+    PROJECT_X("project-x", ".jbc"),
     FANUC_MACRO_B("fanuc-macro-b", ".nc");
 
     private final String optionValue;

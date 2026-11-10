@@ -8,8 +8,13 @@ import java.util.*;
 
 /** VM target for the fixed Javer numeric and evaluation semantics. */
 public final class VmBackend extends TargetBackend {
+    private final boolean projectX;
+
+    public VmBackend() { this(false); }
+    public VmBackend(boolean projectX) { this.projectX = projectX; }
+
     @Override public List<BuiltInSignature> builtInSignatures() {
-        return Arrays.stream(VmBuiltInFunction.values()).map(VmBuiltInFunction::signature).toList();
+        return Arrays.stream(VmBuiltInFunction.values()).filter(f -> f.supported(projectX)).map(VmBuiltInFunction::signature).toList();
     }
     @Override protected void validate(Ir.Program program, DiagnosticBag diagnostics) {
         if (!program.semantics().equals(Ir.Semantics.JAVER)) {
@@ -18,8 +23,7 @@ public final class VmBackend extends TargetBackend {
         for (Ir.Signature signature : program.signatures()) {
             if (signature.builtIn()) {
                 VmBuiltInFunction implementation = VmBuiltInFunction.find(signature.name());
-                if (implementation == null || !signature.returnType().equals(Ir.Type.VOID)
-                        || !signature.parameters().equals(List.of(implementation.parameterType()))) {
+                if (implementation == null || !implementation.supported(projectX) || !implementation.matches(signature)) {
                     diagnostics.add(null, Severity.ERROR, "VM runtime function not supported: " + signature.name());
                 }
             }
