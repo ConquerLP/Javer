@@ -18,12 +18,12 @@ enum VmBuiltInFunction {
     MOVE_CW("move_cw", "MOVE_CW", Ir.Type.VOID, Ir.Type.DOUBLE, Ir.Type.DOUBLE, Ir.Type.DOUBLE, Ir.Type.DOUBLE, Ir.Type.INT),
     MOVE_CCW("move_ccw", "MOVE_CCW", Ir.Type.VOID, Ir.Type.DOUBLE, Ir.Type.DOUBLE, Ir.Type.DOUBLE, Ir.Type.DOUBLE, Ir.Type.INT),
     WAIT_MS("wait_ms", "WAIT_MS", Ir.Type.VOID, Ir.Type.INT),
-    DRIVE_BOOL("driveBool", "DRIVE, BOOL", Ir.Type.VOID, Ir.Type.STRING, Ir.Type.STRING, Ir.Type.BOOL),
-    DRIVE_INT("driveInt", "DRIVE, INT", Ir.Type.VOID, Ir.Type.STRING, Ir.Type.STRING, Ir.Type.INT),
-    DRIVE_DOUBLE("driveDouble", "DRIVE, DOUBLE", Ir.Type.VOID, Ir.Type.STRING, Ir.Type.STRING, Ir.Type.DOUBLE),
-    READ_BOOL("readBool", "READ, BOOL", Ir.Type.BOOL, Ir.Type.STRING, Ir.Type.STRING),
-    READ_INT("readInt", "READ, INT", Ir.Type.INT, Ir.Type.STRING, Ir.Type.STRING),
-    READ_DOUBLE("readDouble", "READ, DOUBLE", Ir.Type.DOUBLE, Ir.Type.STRING, Ir.Type.STRING);
+    DRIVE_BOOL("driveBool", "BDRIVE", Ir.Type.VOID, Ir.Type.STRING, Ir.Type.STRING, Ir.Type.BOOL),
+    DRIVE_INT("driveInt", "IDRIVE", Ir.Type.VOID, Ir.Type.STRING, Ir.Type.STRING, Ir.Type.INT),
+    DRIVE_DOUBLE("driveDouble", "DDRIVE", Ir.Type.VOID, Ir.Type.STRING, Ir.Type.STRING, Ir.Type.DOUBLE),
+    READ_BOOL("readBool", "BREAD", Ir.Type.BOOL, Ir.Type.STRING, Ir.Type.STRING),
+    READ_INT("readInt", "IREAD", Ir.Type.INT, Ir.Type.STRING, Ir.Type.STRING),
+    READ_DOUBLE("readDouble", "DREAD", Ir.Type.DOUBLE, Ir.Type.STRING, Ir.Type.STRING);
 
     private final String name;
     private final List<Ir.Type> parameterTypes;
