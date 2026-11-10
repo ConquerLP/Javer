@@ -1,10 +1,10 @@
 fn void main() {
     call moveFast(0, 0, 10);
     let struct Point center = call Point_init(20, 0, 0);
-    let struct Keyhole keyhole = call Keyhole_init(center, 50, 20, 20, 0);
+    let struct Keyhole keyhole = call Keyhole_init(center, 20, 8.01, 5, 0);
 
     let struct CuttingConfig config = call CuttingConfig_init(
-        500, 200, 100, 2, 5, 0, 0.1, 0.1, 2);
+        500, 200, 100, 2, 2, 0, 0.1, 0.1, 2);
     call Keyhole_cut(keyhole, config);
 }
 
