@@ -1,11 +1,40 @@
 fn void main() {
-    call move_fast(0.0, 0.0, 10.0);
-    call driveBool("cylinder.front", "extend", true);
-    call move_linear(10.0, 0.0, 0.0, 500);
-    call driveDouble("laser.main", "power", 0.75);
-    call move_ccw(20.0, 0.0, 0.0, 5.0, 200);
-    call wait_ms(250);
-    let double pressure = call readDouble("hydraulics.clamp", "pressure");
-    call printd(pressure);
-    call driveDouble("laser.main", "power", 0.0);
+    let double[] x = { 0.0, 20.0, 40.0 };
+    let double[] y = { 0.0, 20.0, 40.0 };
+    let double z = 0.0;
+
+    let struct Point[] points = new struct Point[9];
+    for(let int i = 0; i < points.length; i++) {
+        points[i] = call PointInit(x[i % 3], y[i % 3], z);
+    }
+
+    for(let int i = 0; i < points.length; i++) {
+        call PointMakeHole(points[i], 20.0, 500);
+        call wait_ms(1000);
+    }
+
+}
+
+struct Point {
+    double x;
+    double y;
+    double z;
+}
+
+fn struct Point PointInit(double x, double y, double z) {
+    let struct Point p = new struct Point;
+    p.x = x;
+    p.y = y;
+    p.z = z;
+    return p;
+}
+
+fn void PointMakeHole(struct Point p, double radius, int feed) {
+    call move_fast(p.x, p.y, p.z + 2.0);
+    call move_linear(p.x, p.y, p.z, feed);
+    call move_linear(p.x, p.y + radius, p.z, feed);
+    call move_cw(p.x, p.y - radius, p.z, radius, feed);
+    call move_cw(p.x, p.y + radius, p.z, radius, feed);
+    call move_linear(p.x, p.y, p.z, feed);
+    call move_fast(p.x, p.y, p.z + 2.0);
 }

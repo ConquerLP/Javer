@@ -23,7 +23,20 @@ enum VmBuiltInFunction {
     DRIVE_DOUBLE("driveDouble", "DDRIVE", Ir.Type.VOID, Ir.Type.STRING, Ir.Type.STRING, Ir.Type.DOUBLE),
     READ_BOOL("readBool", "BREAD", Ir.Type.BOOL, Ir.Type.STRING, Ir.Type.STRING),
     READ_INT("readInt", "IREAD", Ir.Type.INT, Ir.Type.STRING, Ir.Type.STRING),
-    READ_DOUBLE("readDouble", "DREAD", Ir.Type.DOUBLE, Ir.Type.STRING, Ir.Type.STRING);
+    READ_DOUBLE("readDouble", "DREAD", Ir.Type.DOUBLE, Ir.Type.STRING, Ir.Type.STRING),
+    EXP("exp", "EXP", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    SQRT("sqrt", "SQRT", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    ABS("abs", "ABS", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    ROUND("round", "ROUND", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    FLOOR("floor", "FLOOR", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    CEIL("ceil", "CEIL", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    LN("ln", "LN", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    SIN("sin", "SIN", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    COS("cos", "COS", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    TAN("tan", "TAN", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    ACOS("acos", "ACOS", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    ASIN("asin", "ASIN", Ir.Type.DOUBLE, Ir.Type.DOUBLE),
+    ATAN("atan", "ATAN", Ir.Type.DOUBLE, Ir.Type.DOUBLE);
 
     private final String name;
     private final List<Ir.Type> parameterTypes;
@@ -53,7 +66,7 @@ enum VmBuiltInFunction {
         this.parameterTypes = List.of(parameters);
     }
 
-    boolean supported(boolean projectX) { return projectX || ordinal() <= PRINTS.ordinal(); }
+    boolean supported(boolean projectX) { return switch (this) { case PRINTB, PRINTC, PRINTI, PRINTD, PRINTS -> !projectX; default -> projectX; }; }
 
     boolean matches(Ir.Signature signature) {
         return returnType.equals(signature.returnType()) && parameterTypes.equals(signature.parameters());
