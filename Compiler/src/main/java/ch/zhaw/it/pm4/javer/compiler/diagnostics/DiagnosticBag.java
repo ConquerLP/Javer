@@ -4,7 +4,10 @@ import ch.zhaw.it.pm4.javer.compiler.CompilationPhase;
 import ch.zhaw.it.pm4.javer.compiler.source.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.source.SourceLocation;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 /**
@@ -18,6 +21,7 @@ public class DiagnosticBag {
     private final int errorLimit;
     private final String filePath;
     private final SourceCache sourceCache;
+    private final Map<Path, SourceCache> sourceFiles = new HashMap<>();
     private final List<Diagnostic> diagnostics;
     private final List<PhaseAbortListener> phaseAbortListeners = new ArrayList<>();
     private CompilationPhase phase;
@@ -177,6 +181,10 @@ public class DiagnosticBag {
         return sb.toString();
     }
 
+    public void registerSource(Path file, SourceCache source) {
+        sourceFiles.put(file, source);
+    }
+
     private String formatDiagnostic(Diagnostic diagnostic) {
         SourceLocation location = diagnostic.location();
         StringBuilder sb = new StringBuilder();
@@ -193,22 +201,23 @@ public class DiagnosticBag {
         }
 
         sb.append("  --> ")
-                .append(filePath)
+                .append(location.file() == null ? filePath : location.file())
                 .append(":")
                 .append(location.lineNumber())
                 .append(":")
                 .append(location.startColumn())
                 .append("\n");
 
-        if (sourceCache != null) {
-            appendSourceExcerpt(sb, location);
+        SourceCache source = location.file() == null ? sourceCache : sourceFiles.get(location.file());
+        if (source != null) {
+            appendSourceExcerpt(sb, location, source);
         }
 
         return sb.toString();
     }
 
-    private void appendSourceExcerpt(StringBuilder sb, SourceLocation location) {
-        String rawLine = sourceCache.getLine(location.lineNumber());
+    private void appendSourceExcerpt(StringBuilder sb, SourceLocation location, SourceCache source) {
+        String rawLine = source.getLine(location.lineNumber());
         String line = expandTabs(rawLine);
         String lineNumber = Integer.toString(location.lineNumber());
         String gutterPadding = " ".repeat(lineNumber.length());

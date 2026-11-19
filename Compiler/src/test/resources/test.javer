@@ -1,3 +1,19 @@
+import math;
+
+
 fn void main() {
-    call prints("Test");
+
+    let double v = call math_pow(2, 2);
+
+
+    call printd(v);
 }
+
+
+
+
+
+
+
+
+

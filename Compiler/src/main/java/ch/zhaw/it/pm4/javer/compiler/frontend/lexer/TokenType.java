@@ -23,6 +23,7 @@ public enum TokenType {
 
 
     // Keywords
+    KEYWORD_IMPORT("import"),
     KEYWORD_IF("if"),
     KEYWORD_ELSE("else"),
     KEYWORD_WHILE("while"),

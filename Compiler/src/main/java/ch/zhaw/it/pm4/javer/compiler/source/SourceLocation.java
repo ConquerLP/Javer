@@ -1,5 +1,7 @@
 package ch.zhaw.it.pm4.javer.compiler.source;
 
+import java.nio.file.Path;
+
 /**
  * Immutable record representing a location inside the source file.
  * Contains the start column, end column, and line number for precise error reporting.
@@ -9,8 +11,13 @@ package ch.zhaw.it.pm4.javer.compiler.source;
  * @param startColumn first 1-based column covered by the location
  * @param endColumn   last 1-based column covered by the location
  * @param lineNumber  1-based source line number
+ * @param file        source path, or null for in-memory input
  */
-public record SourceLocation(int startColumn, int endColumn, int lineNumber) {
+public record SourceLocation(int startColumn, int endColumn, int lineNumber, Path file) {
+
+    public SourceLocation(int startColumn, int endColumn, int lineNumber) {
+        this(startColumn, endColumn, lineNumber, null);
+    }
 
     /**
      * Compact constructor to validate the source location boundaries.

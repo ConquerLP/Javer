@@ -10,7 +10,6 @@ import ch.zhaw.it.pm4.javer.compiler.diagnostics.PhaseResult;
 import ch.zhaw.it.pm4.javer.compiler.backend.TargetBackend;
 import ch.zhaw.it.pm4.javer.compiler.backend.TargetBackendFactory;
 import ch.zhaw.it.pm4.javer.compiler.io.SourceFileReadException;
-import ch.zhaw.it.pm4.javer.compiler.source.SourceCache;
 import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.diagnostics.Severity;
 import ch.zhaw.it.pm4.javer.compiler.frontend.Frontend;
@@ -37,17 +36,17 @@ public class Compiler {
     private boolean phaseAbortRequested;
 
     /**
-     * Creates a compiler configured for one source input and output target.
+     * Creates a compiler configured for source inputs and an output target.
      *
      * @param options validated compiler options
      */
     public Compiler(CompilerOptions options) {
         this.options = options;
         this.targetBackend = TargetBackendFactory.create(options.getTarget());
-        SourceCache sourceCache = new SourceCache(options.getInputFilePath());
         this.context = new CompilationContext(
-                new DiagnosticBag(options.getInputFilePath(), 50, CompilationPhase.COMPILER_SETUP, sourceCache),
-                sourceCache);
+                new DiagnosticBag(String.join(", ", options.getInputPaths().stream().map(Path::toString).toList()),
+                        50, CompilationPhase.COMPILER_SETUP, null),
+                null);
         this.context.getDiagnosticBag().addPhaseAbortListener(phase -> phaseAbortRequested = true);
         enterPhase(CompilationPhase.ARGUMENT_PARSING);
     }
@@ -90,8 +89,8 @@ public class Compiler {
     /** Runs frontend analysis followed by preparation and emission for the selected target. */
     public void compile() {
         enterPhase(CompilationPhase.ARGUMENT_PARSING);
-        PhaseResult<CheckedProgram> result = new Frontend(context.getDiagnosticBag()).analyze(
-                context.getSourceCache().getSourceCode(),
+        PhaseResult<CheckedProgram> result = new Frontend(context.getDiagnosticBag()).analyzeFiles(
+                options.getInputPaths(),
                 targetBackend.builtInSignatures(),
                 options.isDumpLexer() ? dump -> printSection("LEXER TOKENS", dump) : null,
                 options.isDumpAst() ? dump -> printSection("AST", dump) : null);

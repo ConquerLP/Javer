@@ -1,0 +1,12 @@
+
+fn double math_pow(double base, int exponent) {
+    let double result = base > 0.0 ? base : 0.0;
+    for(let int i = 1; i < exponent; i++) {
+        result *= base;
+    }
+    return result;
+}
+
+fn double math_sqrt(double a) {
+    return 1;
+}

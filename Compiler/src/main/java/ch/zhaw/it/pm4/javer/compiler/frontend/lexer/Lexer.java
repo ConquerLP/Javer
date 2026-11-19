@@ -4,6 +4,7 @@ import ch.zhaw.it.pm4.javer.compiler.source.SourceLocation;
 import ch.zhaw.it.pm4.javer.compiler.diagnostics.DiagnosticBag;
 import ch.zhaw.it.pm4.javer.compiler.diagnostics.Severity;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -22,6 +23,7 @@ import java.util.function.Predicate;
 public class Lexer {
     public static final String UNTERMINATED_CHAR_LITERAL = "Unterminated char literal";
     private final String sourceCode;
+    private final Path file;
     private final DiagnosticBag diagnostics;
 
     private int indexInSourceCode = 0;
@@ -38,6 +40,11 @@ public class Lexer {
      *                    null)
      */
     public Lexer(String sourceCode, DiagnosticBag diagnostics) {
+        this(sourceCode, diagnostics, null);
+    }
+
+    public Lexer(String sourceCode, DiagnosticBag diagnostics, Path file) {
+        this.file = file;
         this.sourceCode = sourceCode == null ? "" : sourceCode;
         this.diagnostics = Objects.requireNonNull(diagnostics, "DiagnosticBag must not be null");
     }
@@ -129,7 +136,7 @@ public class Lexer {
             endCol = safeStart;
         }
         int safeLine = Math.max(1, tokenStartLine);
-        return new SourceLocation(safeStart, endCol, safeLine);
+        return new SourceLocation(safeStart, endCol, safeLine, file);
     }
 
     /**

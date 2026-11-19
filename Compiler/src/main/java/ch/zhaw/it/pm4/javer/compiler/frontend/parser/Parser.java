@@ -25,9 +25,10 @@ import java.util.*;
 public class Parser {
 
     private static final Set<TokenType> EOF = EnumSet.of(TokenType.SPECIAL_END_OF_FILE);
-    private static final Set<TokenType> FIRST_TOP_LEVEL = EnumSet.of(
+    private static final Set<TokenType> FIRST_DECLARATION = EnumSet.of(
             TokenType.TYPE_ENUM, TokenType.TYPE_STRUCT, TokenType.KEYWORD_FUNCTION
     );
+    private static final Set<TokenType> FIRST_TOP_LEVEL = enumSet(FIRST_DECLARATION, TokenType.KEYWORD_IMPORT);
     private static final Set<TokenType> FIRST_PRIMITIVE_TYPE = EnumSet.of(
             TokenType.TYPE_INTEGER, TokenType.TYPE_DOUBLE, TokenType.TYPE_BOOLEAN,
             TokenType.TYPE_STRING, TokenType.TYPE_CHARACTER
@@ -260,7 +261,7 @@ public class Parser {
 
         SourceLocation previous = previousToken().getPosition();
         int insertionColumn = previous.endColumn() + 1;
-        return new SourceLocation(insertionColumn, insertionColumn, previous.lineNumber());
+        return new SourceLocation(insertionColumn, insertionColumn, previous.lineNumber(), previous.file());
     }
 
     private SourceLocation diagnosticLocation(Token token) {
@@ -270,7 +271,7 @@ public class Parser {
 
         SourceLocation previous = previousToken().getPosition();
         int insertionColumn = previous.endColumn() + 1;
-        return new SourceLocation(insertionColumn, insertionColumn, previous.lineNumber());
+        return new SourceLocation(insertionColumn, insertionColumn, previous.lineNumber(), previous.file());
     }
 
     private String formatExpectedTokens(Set<TokenType> expected) {
@@ -319,17 +320,26 @@ public class Parser {
     private CompilationUnit parseCompilationUnit() {
         Token startToken = currentToken();
         List<DeclarationAstNode> declarations = new ArrayList<>();
+        List<CompilationUnit.ImportDirective> imports = new ArrayList<>();
         while (isNotAtEnd()) {
             if (!skipErrors(FIRST_TOP_LEVEL, EOF, true)) break;
-            declarations.add(parseDeclaration());
+            if (matchCurrentToken(TokenType.KEYWORD_IMPORT)) {
+                Token keyword = currentToken();
+                consumeToken();
+                Token name = expectTokenType(TokenType.ID_IDENTIFIER);
+                match(TokenType.SYMBOL_SEMICOLON);
+                imports.add(new CompilationUnit.ImportDirective(name.getValue(), keyword.getPosition()));
+            } else {
+                declarations.add(parseDeclaration());
+            }
         }
         match(TokenType.SPECIAL_END_OF_FILE);
-        return located(new CompilationUnit(declarations), startToken);
+        return located(new CompilationUnit(declarations, imports), startToken);
     }
 
     private DeclarationAstNode parseDeclaration() {
         Token startToken = currentToken();
-        if (!skipErrors(FIRST_TOP_LEVEL, FOLLOW_DECLARATION, false))
+        if (!skipErrors(FIRST_DECLARATION, FOLLOW_DECLARATION, false))
             return located(new StructDeclaration("<error>", List.of()), startToken);
         return switch (currentToken().getTokenType()) {
             case TYPE_ENUM -> parseEnumDeclaration();
