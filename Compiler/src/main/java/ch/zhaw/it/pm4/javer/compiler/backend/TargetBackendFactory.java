@@ -15,6 +15,7 @@ public final class TargetBackendFactory {
     public static TargetBackend create(CompilationTarget target) {
         return switch (target) {
             case VM -> new VmBackend();
+            case PROJECT_X -> new VmBackend(true);
             case FANUC_MACRO_B -> new FanucMacroBBackend();
         };
     }

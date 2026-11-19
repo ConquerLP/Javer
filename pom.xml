@@ -12,6 +12,7 @@
     <modules>
         <module>Compiler</module>
         <module>VM</module>
+        <module>ProgramImage</module>
     </modules>
 
     <properties>
