@@ -6,7 +6,7 @@ public final class IrPrinter {
     public static String symbols(Ir.Program program) {
         StringBuilder text = new StringBuilder();
         program.signatures().forEach(s -> text.append("function #").append(s.id()).append(' ').append(s.name())
-                .append(s.parameters()).append(" -> ").append(s.returnType()).append(s.builtIn() ? " [runtime]" : "").append('\n'));
+                .append(s.parameters()).append(s.untypedVariadic() ? " ..." : "").append(" -> ").append(s.returnType()).append(s.builtIn() ? " [runtime]" : "").append('\n'));
         program.structs().forEach(s -> text.append("struct #").append(s.id()).append(' ').append(s.name()).append(' ').append(s.fields()).append('\n'));
         program.enums().forEach(e -> text.append("enum #").append(e.id()).append(' ').append(e.name()).append(' ').append(e.values()).append('\n'));
         return text.toString();

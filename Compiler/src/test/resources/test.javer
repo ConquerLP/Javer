@@ -1,12 +1,9 @@
 import math;
-
+import print;
 
 fn void main() {
 
-    let double v = call math_pow(2, 2);
 
-
-    call printd(v);
 }
 
 

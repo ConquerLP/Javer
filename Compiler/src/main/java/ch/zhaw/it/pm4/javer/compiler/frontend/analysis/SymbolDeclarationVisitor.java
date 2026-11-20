@@ -203,6 +203,10 @@ public class SymbolDeclarationVisitor extends TypeResolvingVisitor {
                         "Variadic parameter must be the last parameter: " + parameter.getName());
             }
 
+            if (parameter.isUntypedVariadic()) {
+                function.setUntypedVariadic(true);
+                continue;
+            }
             TypeInfo elementType = resolveType(parameter.getType());
             TypeInfo type = parameter.isVariadic() ? new ArrayTypeInfo(elementType) : elementType;
             ParameterEntry entry = new ParameterEntry(

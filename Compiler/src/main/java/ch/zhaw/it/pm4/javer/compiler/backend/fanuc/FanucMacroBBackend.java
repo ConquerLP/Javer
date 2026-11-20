@@ -26,6 +26,7 @@ public final class FanucMacroBBackend extends TargetBackend {
     @Override
     protected void validate(Ir.Program program, DiagnosticBag diagnostics) {
         for (var signature : program.signatures()) {
+            if (signature.untypedVariadic()) diagnostics.add(null, Severity.ERROR, "Untyped variadics are not supported by this target.");
             if (signature.builtIn()) {
                 var implementation = FanucBuiltInFunction.find(signature.name());
                 if (implementation == null || !implementation.matches(signature))

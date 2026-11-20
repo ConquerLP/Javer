@@ -8,6 +8,12 @@ import java.util.List;
  * VM instruction mapping for semantic built-in functions.
  */
 enum VmBuiltInFunction {
+    VA_START("va_start", "VA_START", Ir.Type.VOID),
+    VA_I("va_i", "VA_I", Ir.Type.INT),
+    VA_D("va_d", "VA_D", Ir.Type.DOUBLE),
+    VA_B("va_b", "VA_B", Ir.Type.BOOL),
+    VA_C("va_c", "VA_C", Ir.Type.CHAR),
+    VA_S("va_s", "VA_S", Ir.Type.STRING),
     PRINTB("printb", Ir.Type.BOOL, "PRINTB"),
     PRINTC("printc", Ir.Type.CHAR, "PRINTC"),
     PRINTI("printi", Ir.Type.INT, "PRINTI"),
@@ -66,7 +72,7 @@ enum VmBuiltInFunction {
         this.parameterTypes = List.of(parameters);
     }
 
-    boolean supported(boolean projectX) { return switch (this) { case PRINTB, PRINTC, PRINTI, PRINTD, PRINTS -> !projectX; default -> projectX; }; }
+    boolean supported(boolean projectX) { return switch (this) { case VA_START, VA_I, VA_D, VA_B, VA_C, VA_S, PRINTB, PRINTC, PRINTI, PRINTD, PRINTS -> !projectX; default -> projectX; }; }
 
     boolean matches(Ir.Signature signature) {
         return returnType.equals(signature.returnType()) && parameterTypes.equals(signature.parameters());

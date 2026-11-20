@@ -65,7 +65,7 @@ public final class IrVerifier {
             case Ir.Call call -> {
                 Ir.Signature signature = signatures.get(call.functionId());
                 require(signature != null, source, "Unresolved IR call");
-                require(signature.returnType().equals(call.type()) && signature.parameters().equals(call.arguments().stream().map(Ir.Expression::type).toList()), source, "Call signature mismatch");
+                require(signature.returnType().equals(call.type()) && matchesArguments(signature, call.arguments()), source, "Call signature mismatch");
             }
             case Ir.IndexAddress index -> {
                 require(index.index().type().equals(Ir.Type.INT), source, "Index is not int");
@@ -169,5 +169,12 @@ public final class IrVerifier {
     private <T> void unique(Map<Integer, T> map, int id, T value, SourceRange source) { require(map.putIfAbsent(id, value) == null, source, "Duplicate IR identity"); }
     private void require(boolean condition, SourceRange source, String message) {
         if (!condition) throw new CompilerInvariantException(source, message);
+    }
+    private boolean matchesArguments(Ir.Signature signature, List<Ir.Expression> arguments) {
+        List<Ir.Type> actual = arguments.stream().map(Ir.Expression::type).toList();
+        if (!signature.untypedVariadic()) return signature.parameters().equals(actual);
+        int fixed = signature.parameters().size();
+        return actual.size() >= fixed && signature.parameters().equals(actual.subList(0, fixed))
+                && actual.stream().noneMatch(t -> t.kind() == Ir.Kind.VOID || t.kind() == Ir.Kind.ADDRESS);
     }
 }

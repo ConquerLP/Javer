@@ -46,7 +46,8 @@ public final class Ir {
     public record Storage(int id, String name, Type type, StorageKind kind, SourceRange source) {
         public Storage { Objects.requireNonNull(name); Objects.requireNonNull(type); Objects.requireNonNull(kind); Objects.requireNonNull(source); }
     }
-    public record Signature(int id, String name, Type returnType, List<Type> parameters, boolean builtIn) {
+    public record Signature(int id, String name, Type returnType, List<Type> parameters, boolean builtIn, boolean untypedVariadic) {
+        public Signature(int id, String name, Type returnType, List<Type> parameters, boolean builtIn) { this(id, name, returnType, parameters, builtIn, false); }
         public Signature { Objects.requireNonNull(name); Objects.requireNonNull(returnType); parameters = List.copyOf(parameters); }
     }
     public record Function(Signature signature, List<Storage> parameters, List<Storage> locals, Block body, SourceRange source) {

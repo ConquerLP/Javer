@@ -424,7 +424,7 @@ public class Parser {
     private List<FunctionParameter> parseFunctionParameters() {
         List<FunctionParameter> parameters = new ArrayList<>();
         while (!matchCurrentToken(TokenType.SYMBOL_RIGHT_PARENTHESIS) && isNotAtEnd()) {
-            if (!skipErrors(FIRST_TYPE, EnumSet.of(TokenType.SYMBOL_RIGHT_PARENTHESIS), true)) return parameters;
+            if (!matchCurrentToken(TokenType.SYMBOL_ELLIPSIS) && !skipErrors(FIRST_TYPE, EnumSet.of(TokenType.SYMBOL_RIGHT_PARENTHESIS), true)) return parameters;
             parameters.add(parseFunctionParameter());
             if (!matchCurrentToken(TokenType.SYMBOL_COMMA)) return parameters;
             match(TokenType.SYMBOL_COMMA);
@@ -435,6 +435,10 @@ public class Parser {
 
     private FunctionParameter parseFunctionParameter() {
         Token startToken = currentToken();
+        if (matchCurrentToken(TokenType.SYMBOL_ELLIPSIS)) {
+            match(TokenType.SYMBOL_ELLIPSIS);
+            return located(new FunctionParameter("...", null, true), startToken);
+        }
         TypeAstNode type = parseType();
         boolean variadic = matchCurrentToken(TokenType.SYMBOL_ELLIPSIS);
         if (variadic) {

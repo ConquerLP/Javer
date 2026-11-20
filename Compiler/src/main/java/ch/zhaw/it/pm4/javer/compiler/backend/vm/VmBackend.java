@@ -21,6 +21,7 @@ public final class VmBackend extends TargetBackend {
             diagnostics.add(null, Severity.ERROR, "VM target does not support the requested language semantics.");
         }
         for (Ir.Signature signature : program.signatures()) {
+            if (signature.untypedVariadic() && projectX) diagnostics.add(null, Severity.ERROR, "Untyped variadics are not supported by this target.");
             if (signature.builtIn()) {
                 VmBuiltInFunction implementation = VmBuiltInFunction.find(signature.name());
                 if (implementation == null || !implementation.supported(projectX) || !implementation.matches(signature)) {

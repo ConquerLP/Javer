@@ -34,7 +34,8 @@ public class VM {
     private static final int FRAME_ARG_BYTES_OFFSET = 4;
     private static final int FRAME_RETURN_PC_OFFSET = 8;
     private static final int FRAME_PREVIOUS_FP_OFFSET = 12;
-    private static final int FRAME_HEADER_SIZE = 16;
+    private static final int FRAME_VA_CURSOR_OFFSET = 16;
+    private static final int FRAME_HEADER_SIZE = 20;
     private static final int ARRAY_LENGTH_BYTES = 4;
     private static final int ARRAY_PAYLOAD_OFFSET_BYTES = ARRAY_LENGTH_BYTES;
     private static final long STACK_LIMIT = ADDRESS_SPACE_SIZE;
@@ -555,6 +556,22 @@ public class VM {
             case JUMP -> parseJump(parts, instrName, lineNumber, pendingJumpChecks, false, false);
             case JUMPT -> parseJump(parts, instrName, lineNumber, pendingJumpChecks, true, true);
             case JUMPF -> parseJump(parts, instrName, lineNumber, pendingJumpChecks, true, false);
+            case PARAM, VA_START -> {
+                ensureOperandCount(parts, 2, instrName, lineNumber);
+                int offset = parseIntOperand(parts[1], instrName, lineNumber);
+                yield vm -> {
+                    long end = vm.fp + FRAME_HEADER_SIZE + vm.readInt(vm.checkedAddress(vm.fp + FRAME_ARG_BYTES_OFFSET, instrName));
+                    if (kind == InstructionKind.PARAM) vm.pushInt(vm.checkedAddress(end + offset, instrName));
+                    else vm.writeInt(vm.checkedAddress(vm.fp + FRAME_VA_CURSOR_OFFSET, instrName), (int) (end - offset));
+                };
+            }
+            case VA_I, VA_D, VA_B, VA_C, VA_S -> noOperand(parts, instrName, lineNumber, vm -> {
+                int slot = vm.checkedAddress(vm.fp + FRAME_VA_CURSOR_OFFSET, instrName);
+                int cursor = vm.readInt(slot) - (kind == InstructionKind.VA_D ? 8 : 4);
+                vm.writeInt(slot, cursor);
+                if (kind == InstructionKind.VA_D) vm.pushDouble(vm.readDouble(cursor));
+                else vm.pushInt(vm.readInt(cursor));
+            });
             case CALL -> {
                 ensureOperandCount(parts, 3, instrName, lineNumber);
                 String label = parseLabelOperand(parts[1], instrName, lineNumber);
@@ -1162,6 +1179,7 @@ public class VM {
     }
 
     private void pushFrame(int returnPc, int argBytes) {
+        pushInt(0); // Per-frame variadic cursor.
         pushInt((int) fp);
         pushInt(returnPc);
         pushInt(argBytes);
@@ -1456,6 +1474,7 @@ public class VM {
         JUMP, JUMPT, JUMPF,
         CALL, ENTER, RET,
         HALT,
+        PARAM, VA_START, VA_I, VA_D, VA_B, VA_C, VA_S,
         PRINTB, PRINTC, PRINTI, PRINTD, PRINTS
     }
 

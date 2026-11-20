@@ -67,7 +67,7 @@ public class NameResolutionVisitor extends AstNodeVisitorBase {
 
     @Override
     public void visit(FunctionParameter node) {
-        node.getType().accept(this);
+        if (node.getType() != null) node.getType().accept(this);
     }
 
     @Override

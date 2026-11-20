@@ -45,7 +45,7 @@ public final class IrLowering {
         List<Ir.Signature> allSignatures = new ArrayList<>();
         for (FunctionEntry function : root.getGlobalScope().getFunctions().values()) {
             Ir.Signature signature = new Ir.Signature(id(function), function.getName(), type(function.getReturnType()),
-                    function.getScope().getParameters().values().stream().map(p -> type(p.getType())).toList(), function.isBuiltIn());
+                    function.getScope().getParameters().values().stream().map(p -> type(p.getType())).toList(), function.isBuiltIn(), function.isUntypedVariadic());
             signatures.put(function, signature);
             allSignatures.add(signature);
         }
@@ -204,6 +204,9 @@ public final class IrLowering {
         List<Ir.Expression> arguments = new ArrayList<>();
         int fixed = function.isVariadic() ? parameters.size() - 1 : parameters.size();
         for (int i = 0; i < fixed; i++) arguments.add(convert(expression(node.getArguments().get(i)), type(parameters.get(i).getType())));
+        if (function.isUntypedVariadic()) {
+            for (int i = fixed; i < node.getArguments().size(); i++) arguments.add(expression(node.getArguments().get(i)));
+        }
         if (function.isVariadic()) {
             ParameterEntry parameter = parameters.getLast();
             if (node.getArguments().size() == parameters.size() && TypeRules.isAssignable(parameter.getType(), node.getArguments().get(fixed).getResultingType())) {

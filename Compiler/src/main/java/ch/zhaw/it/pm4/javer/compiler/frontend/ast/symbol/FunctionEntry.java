@@ -13,6 +13,9 @@ public final class FunctionEntry extends SymbolEntry {
     private FunctionScope scope;
     private boolean builtIn;
     private ParameterEntry variadicParameter;
+    private boolean untypedVariadic;
+    public boolean isUntypedVariadic() { return untypedVariadic; }
+    public void setUntypedVariadic(boolean value) { untypedVariadic = value; }
 
     public FunctionEntry(String name) {
         super(name);

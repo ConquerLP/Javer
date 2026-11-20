@@ -28,6 +28,7 @@ public class TypeCheckVisitor extends TypeResolvingVisitor {
     private final DiagnosticBag diagnosticBag;
     private final Set<StorageEntry> invalidInitializedVariables = new HashSet<>();
     private GlobalScope globalScope;
+    private boolean inUntypedVariadic;
     private TypeInfo currentFunctionReturnType = UnknownTypeInfo.INSTANCE;
 
     /**
@@ -78,6 +79,8 @@ public class TypeCheckVisitor extends TypeResolvingVisitor {
 
     @Override
     public void visit(FunctionDeclaration node) {
+        boolean previousVariadic = inUntypedVariadic;
+        inUntypedVariadic = node.getSymbolEntry() != null && node.getSymbolEntry().isUntypedVariadic();
         TypeInfo previous = currentFunctionReturnType;
 
         currentFunctionReturnType = node.getSymbolEntry() != null
@@ -85,11 +88,13 @@ public class TypeCheckVisitor extends TypeResolvingVisitor {
                 : resolveType(node.getReturnType());
         super.visit(node);
         currentFunctionReturnType = previous;
+        inUntypedVariadic = previousVariadic;
     }
 
     @Override
     public void visit(FunctionParameter node) {
-        node.getType().accept(this);
+        if (node.isUntypedVariadic()) return;
+        if (node.getType() != null) node.getType().accept(this);
 
         TypeInfo resolved = resolveType(node.getType());
         if (resolved instanceof UnknownTypeInfo && diagnosticBag != null) {
@@ -170,6 +175,16 @@ public class TypeCheckVisitor extends TypeResolvingVisitor {
 
         List<ParameterEntry> parameters = new ArrayList<>(function.getScope().getParameters().values());
 
+        if (function.isBuiltIn() && java.util.Set.of("va_start", "va_i", "va_d", "va_b", "va_c", "va_s").contains(function.getName()) && !inUntypedVariadic) report(node, "va builtins require an untyped variadic function.");
+        if (function.isUntypedVariadic()) {
+            boolean valid = node.getArguments().size() >= parameters.size();
+            if (!valid) report(node, "Argument count mismatch for function " + node.getFunctionName());
+            for (int i = 0; i < Math.min(parameters.size(), node.getArguments().size()); i++) valid &= validateArgument(node, i, parameters.get(i).getType());
+            for (int i = parameters.size(); i < node.getArguments().size(); i++) {
+                if (node.getArguments().get(i).getResultingType() instanceof VoidTypeInfo) { report(node, "Cannot pass void as a variadic argument."); valid = false; }
+            }
+            node.setResultingType(valid ? function.getReturnType() : UnknownTypeInfo.INSTANCE); return;
+        }
         if (!function.isVariadic()) {
             if (!validateFixedArguments(node, parameters)) {
                 node.setResultingType(UnknownTypeInfo.INSTANCE);

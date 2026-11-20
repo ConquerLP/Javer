@@ -154,6 +154,7 @@ public class AstPrinter extends AstNodeVisitorBase {
 
     @Override
     public void visit(FunctionParameter node) {
+        if (node.isUntypedVariadic()) { visitMany(List.of(isLast -> scalarChild("variadic", "untyped", node.getSourceRange(), isLast))); return; }
         List<Consumer<Boolean>> children = new ArrayList<>();
         children.add(isLast -> labeledNodeChild("type", node.getType(), isLast));
         if (node.isVariadic()) {

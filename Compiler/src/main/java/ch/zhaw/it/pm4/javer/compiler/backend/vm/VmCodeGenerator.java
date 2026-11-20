@@ -98,6 +98,9 @@ final class VmCodeGenerator extends TextCodeGenerator {
             case Ir.Literal literal -> literal(literal);
             case Ir.LocalAddress local -> {
                 VmMetadata.StorageLayout layout = metadata.storage(local.storageId());
+                if (layout.parameter() && signatures.get(currentFunction).untypedVariadic()) {
+                    line("PARAM, " + (layout.offsetBytes() - VmLayout.FRAME_HEADER_BYTES - metadata.function(currentFunction).parameterBytes())); break;
+                }
                 line("LOCAL, " + (layout.offsetBytes() + (layout.parameter() ? metadata.function(currentFunction).localBytes() : 0)));
             }
             case Ir.Load load -> { expression(load.address()); line(VmLayout.memoryWidth(load.type()).loadInstruction()); }
@@ -133,14 +136,18 @@ final class VmCodeGenerator extends TextCodeGenerator {
             }
             case Ir.Call call -> {
                 Ir.Signature signature = signatures.get(call.functionId());
-                call.arguments().forEach(this::expression);
+                for (int i = 0; i < call.arguments().size(); i++) {
+                    Ir.Expression argument = call.arguments().get(i); expression(argument);
+                    if (signature.untypedVariadic() && i >= signature.parameters().size() && argument.type().kind() == Ir.Kind.ENUM) line("LOAD4");
+                }
                 if (signature.builtIn()) {
                     VmBuiltInFunction function = VmBuiltInFunction.find(signature.name());
                     require(function != null, call.source(), "Unknown VM runtime function " + signature.name());
-                    line(function.instruction());
+                    if (signature.name().equals("va_start")) line("VA_START, " + metadata.function(currentFunction).parameterBytes());
+                    else line(function.instruction());
                 } else {
                     VmMetadata.FunctionLayout function = metadata.function(call.functionId());
-                    line("CALL, " + function.label() + ", " + function.parameterBytes());
+                    line("CALL, " + function.label() + ", " + (signature.untypedVariadic() ? call.arguments().stream().mapToInt(a -> VmLayout.stackBytes(a.type())).sum() : function.parameterBytes()));
                 }
             }
             case Ir.ArrayNew array -> array(array);

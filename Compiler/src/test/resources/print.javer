@@ -1,0 +1,4 @@
+fn void printf(string format, int... v, double ... d) {
+
+
+}

@@ -69,6 +69,7 @@ public final class SymbolTableAstPrinter extends AstPrinter {
         List<List<String>> rows = new ArrayList<>();
         rows.add(List.of("section", "scope", "name", "type", "details"));
 
+        if (function.isUntypedVariadic()) rows.add(List.of("param", "function", "...", "", "untyped variadic"));
         if (scope != null && !scope.getParameters().isEmpty()) {
             for (ParameterEntry parameter : scope.getParameters().values()) {
                 rows.add(storageRow("param", "function", parameter, parameterDetails(parameter)));

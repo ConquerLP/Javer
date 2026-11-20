@@ -160,3 +160,41 @@ does not depend on backend implementation packages.
 ## Project-X SPS target
 
 Use --target project-x to emit extended VM code (.jbc). See [instruction contract](docs/project-x.md) and [example](examples/project-x.javer). The SPS runtime is implemented separately.
+
+### Untyped variadic functions (VM)
+
+A final unnamed `...` accepts mixed argument types. Typed variadics such as
+`int ... values` retain their existing array semantics; the two forms cannot be combined.
+
+```c
+fn void example(string label, ...) {
+    call va_start();
+    let int number = call va_i();
+    let double value = call va_d();
+    call prints(label);
+    call printi(number);
+    call printd(value);
+}
+
+fn void main() {
+    call example("values: ", 42, 3.5);
+}
+```
+
+The zero-argument builtins `va_i`, `va_d`, `va_b`, `va_c`, and `va_s`
+read the next int, double, bool, char, or string. `va_start` initializes or resets
+the current invocation's cursor. They are only available directly inside an untyped
+variadic function. No `va_end` is needed. Nested calls and recursion keep separate cursors.
+
+Arguments retain their stack representation (double: 8 bytes; other supported
+values: 4 bytes), without C default argument promotions. Enum extras are passed as
+integer values and read with `va_i`. Structs are not formatted automatically;
+pass the result of a programmer-defined string function to a string placeholder.
+There are no vararg type tags or additional bounds checks. Reading before
+`va_start`, requesting the wrong type, or reading beyond the supplied arguments
+has no guaranteed result. A format parser and `printf` itself belong in Javer code.
+
+This feature currently targets the regular VM backend. The VM frame header is now
+20 bytes, including a per-frame cursor; regenerate existing bytecode with the matching
+compiler. Run `powershell -NoProfile -File Compiler/src/test/varargs.ps1` for the
+standalone integration checks (JDK 21+, no Maven required).

@@ -20,6 +20,8 @@ public final class FunctionParameter extends AstNodeBase implements AstNode {
         this.variadic = variadic;
     }
 
+    public boolean isUntypedVariadic() { return variadic && type == null; }
+
     public TypeAstNode getType() {
         return type;
     }
